@@ -9,6 +9,9 @@ MAX_CLIP_SECONDS = 5 * 60
 AUDIO_CODEC = "mp3"
 AUDIO_QUALITY = "192"
 
+# Download Directory
+DOWNLOAD_DIR = Path("downloads")
+
 # Regular expressions for URL validation
 SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9 _.-]+")
 YTD_BE_RE = re.compile(r'^https?://(?:www\.)?youtu\.be/(?P<id>[\w-]{11})(?:\?.*)?$', re.I)
@@ -32,54 +35,35 @@ YTDL_BASE = {
     "noplaylist": True,
 }
 
+# Parse the start time provided from the url
 def parse_start_time(raw: str) -> Optional[int]:
-    """
-    Parse a YouTube time string (e.g., '120s') into seconds.
-    
-    Args:
-        raw (str): Raw time string from URL parameter
-        
-    Returns:
-        Optional[int]: Parsed time in seconds, or None if invalid
-    """
     if not raw:
         return None
     
-    # Remove 's' suffix if present
     sec = raw.rstrip('s')
     try:
         return int(sec)
     except ValueError:
         return None
 
-def validate_youtube_url(url: str) -> Tuple[str, int]:
-    """
-    Validate and parse a YouTube URL into video ID and start time.
-    
-    Args:
-        url (str): YouTube URL to validate
-        
-    Returns:
-        Tuple[str, int]: Video ID and start time in seconds
-        
-    Raises:
-        ValueError: If URL is invalid or video ID is malformed
-    """
-    # Validate URL format
+# Ensure the URL matches the expected Youtube Share link structure
+def validate_youtube_url(url: str) -> None:
     if not (YTD_BE_RE.match(url) or SHORTS_RE.match(url)):
         raise ValueError(
             "Only short or video share links are accepted "
             "(youtu.be/... or youtube.com/shorts/...)."
         )
     
+# Pull the video id and start time from the url
+def extract_youtube_url(url: str) -> Tuple[str, int]:
     parsed = urlparse(url)
     query_params = parse_qs(parsed.query)
     
     # Extract start time from query parameters
     start_time = 0
     if query_params.get("t"):
-        raw_start = query_params["t"][0]
-        start_time = max(0, parse_start_time(raw_start) or 0)
+        query_param_start_time = parse_start_time(query_params["t"][0]) or 0
+        start_time = max(0, query_param_start_time)
         
     # Extract and validate video ID
     video_id = parsed.path.strip("/").split("/")[-1]
@@ -88,27 +72,10 @@ def validate_youtube_url(url: str) -> Tuple[str, int]:
     
     return video_id, start_time
 
+
 def parse_ts(value: Optional[Union[str, int]]) -> Optional[int]:
-    """
-    Parse a time string (e.g., '2:30', '120') into seconds.
-    
-    Args:
-        value (Optional[Union[str, int]]): Time value to parse
-        
-    Returns:
-        Optional[int]: Time in seconds, or None if input is None
-        
-    Raises:
-        ValueError: If time format is invalid
-    """
     if value is None:
         return None
-        
-    # Handle integer input
-    if isinstance(value, int):
-        if value < 0:
-            raise ValueError("Time cannot be negative.")
-        return value
         
     # Handle string input
     parts = value.strip().split(":")
@@ -132,18 +99,6 @@ def parse_ts(value: Optional[Union[str, int]]) -> Optional[int]:
     return mm * 60 + ss
 
 def fetch_info(url: str) -> dict:
-    """
-    Fetch metadata from a YouTube URL without downloading.
-    
-    Args:
-        url (str): YouTube URL
-        
-    Returns:
-        dict: Video metadata
-        
-    Raises:
-        Exception: If metadata extraction fails
-    """
     with YoutubeDL(YTDL_META) as ydl:
         return ydl.extract_info(url, download=False)
 
@@ -178,23 +133,7 @@ def validate_clip_parameters(
     duration: int,
     start_time: int,
     clip_length: int,
-    max_clip_seconds: int = MAX_CLIP_SECONDS
 ) -> Tuple[int, int]:
-    """
-    Validate clip parameters and adjust as needed.
-    
-    Args:
-        duration (int): Video duration in seconds
-        start_time (int): Clip start time in seconds
-        clip_length (int): Desired clip length in seconds
-        max_clip_seconds (int): Maximum allowed clip length
-        
-    Returns:
-        Tuple[int, int]: Validated start time and clip length
-        
-    Raises:
-        ValueError: If parameters are invalid
-    """
     if start_time >= duration:
         raise ValueError("Start time is beyond the end of the video.")
         
@@ -211,28 +150,10 @@ def validate_clip_parameters(
 
 def download_clip_mp3(
     canonical: str, 
-    outdir: Path, 
     start_time: int, 
-    clip_length: Optional[int], 
+    provided_clip_length: Optional[int], 
     filename_opt: Optional[str]
 ) -> Path:
-    """
-    Download a YouTube video clip as an audio file.
-    
-    Args:
-        canonical (str): Canonical YouTube URL
-        outdir (Path): Output directory
-        start_time (int): Start time in seconds
-        clip_length (Optional[int]): Clip length in seconds
-        filename_opt (Optional[str]): Optional custom filename
-        
-    Returns:
-        Path: Path to downloaded audio file
-        
-    Raises:
-        RuntimeError: If download fails
-        ValueError: If parameters are invalid
-    """
     try:
         # Fetch video metadata
         info = fetch_info(canonical)
@@ -242,20 +163,23 @@ def download_clip_mp3(
             raise ValueError("Video duration is zero or invalid.")
 
         # Validate and adjust clip parameters
-        clip_length = max(1, min(clip_length or MAX_CLIP_SECONDS, MAX_CLIP_SECONDS))
-        start_time, clip_length = validate_clip_parameters(duration, start_time, clip_length)
+        if not provided_clip_length:
+            provided_clip_length = MAX_CLIP_SECONDS
+
+        clip_length = max(1, provided_clip_length)
+        start_time, provided_clip_length = validate_clip_parameters(duration, start_time, clip_length)
 
         # Create output directory
-        outdir.mkdir(parents=True, exist_ok=True)
+        DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
         
         # Generate output path
         title = filename_opt or (info.get("title") or "clip")
-        output_path = generate_output_path(outdir, title)
+        output_path = generate_output_path(DOWNLOAD_DIR, title)
 
         # Configure yt-dlp options
         ydl_opts = dict(YTDL_BASE)
         ydl_opts["outtmpl"] = str(output_path.with_suffix(".%(ext)s"))
-        ydl_opts["postprocessor_args"] = ["-ss", str(start_time), "-t", str(clip_length)]
+        ydl_opts["postprocessor_args"] = ["-ss", str(start_time), "-t", str(provided_clip_length)]
 
         # Download the clip
         with YoutubeDL(ydl_opts) as ydl:

@@ -2,11 +2,11 @@ import asyncio
 from pathlib import Path
 from typing import Optional
 from discord import app_commands, File, Interaction
-from utils.audioclip import validate_youtube_url, parse_ts, download_clip_mp3
+from utils.audioclip import extract_youtube_url, validate_youtube_url, parse_ts, download_clip_mp3
 
-DOWNLOAD_DIR = Path("downloads")
 active_downloads: set[int] = set()
 
+# Command that converts a Youtube share link into an audio clip
 def setup_audioclip(tree: app_commands.CommandTree):
     @tree.command(
         name="audioclip",
@@ -14,7 +14,7 @@ def setup_audioclip(tree: app_commands.CommandTree):
     )
     @app_commands.describe(
         url="YouTube Share URL",
-        length="Clip length (SS, MM:SS, or HH:MM:SS). Max 5m.",
+        length="Clip length (SS or MM:SS). Max 5m.",
         file_name="Optional custom file name"
     )
     async def audioclip(
@@ -25,25 +25,28 @@ def setup_audioclip(tree: app_commands.CommandTree):
     ):
         user_id = interaction.user.id
 
-        # One-at-a-time per user
+        # Limit to one downloads at a time per user
         if user_id in active_downloads:
             return await interaction.response.send_message(
                 "⚠️ You already have a download in progress.", 
                 ephemeral=True
             )
 
-        # Validate YouTube URL
+        # Ensure that url matches the expected Youtube share URL structure
         try:
-            video_id, start_time = validate_youtube_url(url)
+            validate_youtube_url(url)
         except ValueError as ve:
             return await interaction.response.send_message(
                 f"❌ Invalid URL: {ve}", 
                 ephemeral=True
             )
+         
+        # Extract query parameters and video id
+        video_id, start_time = extract_youtube_url(url)
 
         # Parse clip length
         try:
-            clip_sec = parse_ts(length)
+            provided_clip_length = parse_ts(length)
         except ValueError as ve:
             return await interaction.response.send_message(
                 f"❌ Invalid time format: {ve}", 
@@ -62,9 +65,8 @@ def setup_audioclip(tree: app_commands.CommandTree):
             mp3_path = await asyncio.to_thread(
                 download_clip_mp3, 
                 canonical_url, 
-                DOWNLOAD_DIR, 
                 start_time, 
-                clip_sec, 
+                provided_clip_length, 
                 file_name
             )
 
