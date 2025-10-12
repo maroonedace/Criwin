@@ -1,8 +1,8 @@
 import asyncio
-from pathlib import Path
 from typing import Optional
 from discord import app_commands, File, Interaction
 from utils.audioclip import extract_youtube_url, validate_youtube_url, parse_ts, download_clip_mp3
+from utils.index import send_message
 
 active_downloads: set[int] = set()
 
@@ -23,23 +23,18 @@ def setup_audioclip(tree: app_commands.CommandTree):
         length: Optional[str] = None, 
         file_name: Optional[str] = None
     ):
+        # Get user id
         user_id = interaction.user.id
 
         # Limit to one downloads at a time per user
         if user_id in active_downloads:
-            return await interaction.response.send_message(
-                "⚠️ You already have a download in progress.", 
-                ephemeral=True
-            )
+            send_message(interaction, "⚠️ You already have a download in progress.")
 
         # Ensure that url matches the expected Youtube share URL structure
         try:
             validate_youtube_url(url)
         except ValueError as ve:
-            return await interaction.response.send_message(
-                f"❌ Invalid URL: {ve}", 
-                ephemeral=True
-            )
+            send_message(interaction, f"❌ Invalid URL: {ve}")
          
         # Extract query parameters and video id
         video_id, start_time = extract_youtube_url(url)
@@ -48,10 +43,7 @@ def setup_audioclip(tree: app_commands.CommandTree):
         try:
             provided_clip_length = parse_ts(length)
         except ValueError as ve:
-            return await interaction.response.send_message(
-                f"❌ Invalid time format: {ve}", 
-                ephemeral=True
-            )
+            send_message(interaction, f"❌ Invalid time format: {ve}", )
 
         # Construct canonical URL
         canonical_url = f"https://www.youtube.com/watch?v={video_id}"

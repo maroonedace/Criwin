@@ -35,6 +35,14 @@ YTDL_BASE = {
     "noplaylist": True,
 }
 
+# Ensure the URL matches the expected Youtube Share link structure
+def validate_youtube_url(url: str) -> None:
+    if not (YTD_BE_RE.match(url) or SHORTS_RE.match(url)):
+        raise ValueError(
+            "Only short or video share links are accepted "
+            "(youtu.be/... or youtube.com/shorts/...)."
+        )
+
 # Parse the start time provided from the url
 def parse_start_time(raw: str) -> Optional[int]:
     if not raw:
@@ -45,14 +53,6 @@ def parse_start_time(raw: str) -> Optional[int]:
         return int(sec)
     except ValueError:
         return None
-
-# Ensure the URL matches the expected Youtube Share link structure
-def validate_youtube_url(url: str) -> None:
-    if not (YTD_BE_RE.match(url) or SHORTS_RE.match(url)):
-        raise ValueError(
-            "Only short or video share links are accepted "
-            "(youtu.be/... or youtube.com/shorts/...)."
-        )
     
 # Pull the video id and start time from the url
 def extract_youtube_url(url: str) -> Tuple[str, int]:
