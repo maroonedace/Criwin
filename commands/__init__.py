@@ -11,14 +11,13 @@ def setup_commands(tree: app_commands.CommandTree):
     setup_soundboard(tree)
     setup_leave(tree)
 
-    @tree.command()
-    @app_commands.rename(yt_to_mp3='yttomp3')
+    @tree.command(name="yt-to-mp3")
     @app_commands.describe(
         url="YouTube Share URL",
         length="Clip length (SS or MM:SS). Max 5m.",
         file_name="Optional custom file name"
     )
-    async def _(interaction: Interaction, 
+    async def yt_to_mp3(interaction: Interaction, 
         url: str, 
         length: Optional[str] = None, 
         file_name: Optional[str] = None):

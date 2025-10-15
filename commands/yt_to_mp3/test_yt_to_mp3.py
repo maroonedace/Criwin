@@ -1,30 +1,39 @@
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 from discord import Interaction, User
 from commands.yt_to_mp3.file import setup_yt_to_mp3, active_downloads
 
+class TestYtToMp3:
+    user_id = 123456789
+    url = "https://www.youtube.com/watch?v=example"
 
-@pytest.fixture(autouse=True)
-def setup_and_teardown():
-    """Fixture to reset active_downloads before and after each test"""
-    active_downloads.clear()
-    yield
-    active_downloads.clear()
-    # send_message()
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """Fixture to reset active_downloads before and after each test"""
+        active_downloads.clear()
+        yield
+        active_downloads.clear()
 
-@pytest.fixture
-def mock_interaction():
-    """Create a mock interaction object"""
-    interaction = Mock(spec=Interaction)
-    interaction.user = Mock()
-    interaction.user.id = 123456789
-    return interaction
+    @pytest.fixture
+    def mock_interaction(self):
+        """Create a mock interaction object"""
+        interaction = Mock(spec=Interaction)
+        interaction.user = Mock(spec=User)
+        interaction.user.id = self.user_id
+        return interaction
 
-def test(mock_interaction):   
-    with patch('commands.utils.send_message') as mock_send_message:
-        url = ""
-        setup_yt_to_mp3(
+    @pytest.mark.asyncio
+    async def test_download_message_does_send(self, mock_interaction):
+        # Add user to active downloads
+        active_downloads.add(mock_interaction.user.id)
+        
+        with patch('commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
+            # Run the async function
+            await setup_yt_to_mp3(mock_interaction, self.url)
+            
+            # Assert that send_message was called with correct arguments
+            mock_send_message.assert_called_once_with(
                 mock_interaction, 
-                url,
+                "⚠️ You already have a download in progress."
             )
-        mock_send_message.assert_not_called()
+        
