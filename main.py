@@ -2,7 +2,7 @@ import os
 import discord
 from dotenv import load_dotenv
 from discord import Intents, app_commands, Object
-from commands import setup_all
+from commands import setup_commands
 
 # Setting up to load ENV values
 load_dotenv()
@@ -30,7 +30,7 @@ async def setup_hook():
     tree.clear_commands(guild=GUILD)
 
     # Function to set up discord commands
-    setup_all(tree)
+    setup_commands(tree)
     
     # Sync to guild to sync commands immediately
     tree.copy_global_to(guild=GUILD)
