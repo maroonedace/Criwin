@@ -17,7 +17,7 @@ def setup_commands(tree: app_commands.CommandTree):
         length="Clip length (SS or MM:SS). Max 5m.",
         file_name="Optional custom file name"
     )
-    async def yt_to_mp3(interaction: Interaction, 
+    async def file(interaction: Interaction, 
         url: str, 
         length: Optional[str] = None, 
         file_name: Optional[str] = None):
