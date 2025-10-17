@@ -1,13 +1,13 @@
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
 from discord import Interaction, User
-from commands.yt_to_mp3.file import INVALID_VIDEO_ID_MESSAGE, LIMIT_DOWNLOAD_MESSAGE, URL_MISMATCH_MESSAGE, setup_yt_to_mp3, active_downloads
+from commands.yt_to_mp3.file import DURATION_INVALID_MESSAGE, LIMIT_DOWNLOAD_MESSAGE, URL_MISMATCH_MESSAGE, setup_yt_to_mp3, active_downloads
 
 class TestYtToMp3:
     user_id = 123456789
-    invalid_url = ""
-    invalid_video_id_url = "https://www.youtube.com/watch?v=example"
-    valid_url = "https://www.youtube.com/watch?v=o_JzbtHjtEk"
+    invalid_url = "https://youtu.be/GFsdsdsdsdsdsdsd"
+    invalid_url_2 = "https://youtu.be/GFsdsdsdsds"
+    valid_url = "https://youtu.be/GFokXnCCMf8?si=ie8ydID-XH0F2yrM"
 
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
@@ -43,11 +43,23 @@ class TestYtToMp3:
     async def test_invalid_url(self, mock_interaction):
         with patch('commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
             # Run the async function
-            await setup_yt_to_mp3(mock_interaction, self.valid_url)
+            await setup_yt_to_mp3(mock_interaction, self.invalid_url)
             
             # Assert that send_message was called with correct arguments
             mock_send_message.assert_called_once_with(
                 mock_interaction, 
                 URL_MISMATCH_MESSAGE
+            )
+    
+    @pytest.mark.asyncio
+    async def test_invalid_duration(self, mock_interaction):
+        with patch('commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
+            # Run the async function
+            await setup_yt_to_mp3(mock_interaction, self.invalid_url_2)
+            
+            # Assert that send_message was called with correct arguments
+            mock_send_message.assert_called_once_with(
+                mock_interaction, 
+                DURATION_INVALID_MESSAGE
             )
         
