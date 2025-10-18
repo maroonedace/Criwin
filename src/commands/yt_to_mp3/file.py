@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from typing import Optional
 from discord import Interaction, File
-from commands.utils import send_message
+from src.commands.utils import send_message
 from yt_dlp import YoutubeDL
 
 # Regular expressions for URL validation

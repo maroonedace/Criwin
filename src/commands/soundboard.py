@@ -2,7 +2,7 @@ import asyncio
 from typing import List
 from discord import Interaction, app_commands, FFmpegPCMAudio
 import discord
-from utils.soundboard import add_sound, delete_sound, load_sounds, list_sounds
+from src.utils.soundboard import add_sound, delete_sound, load_sounds, list_sounds
 
 def setup_soundboard(tree: app_commands.CommandTree):
     # ======================

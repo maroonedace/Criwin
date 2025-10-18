@@ -1,8 +1,8 @@
 import asyncio
 from typing import Optional
 from discord import app_commands, File, Interaction
-from utils.audioclip import extract_youtube_url, validate_youtube_url, parse_ts, download_clip_mp3
-from utils.index import send_message
+from src.utils.audioclip import extract_youtube_url, validate_youtube_url, parse_ts, download_clip_mp3
+from src.utils.index import send_message
 
 active_downloads: set[int] = set()
 

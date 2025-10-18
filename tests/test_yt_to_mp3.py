@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
 from discord import Interaction, User
-from commands.yt_to_mp3.file import FILE_INVALID_MESSAGE, LIMIT_DOWNLOAD_MESSAGE, LONG_DURATION_MESSAGE, INVALID_URL_STRUCTURE_MESSAGE, is_url_valid, setup_yt_to_mp3, active_downloads
+from src.commands.yt_to_mp3.file import FILE_INVALID_MESSAGE, LIMIT_DOWNLOAD_MESSAGE, LONG_DURATION_MESSAGE, INVALID_URL_STRUCTURE_MESSAGE, is_url_valid, setup_yt_to_mp3, active_downloads
 
 class TestYtToMp3:
     user_id = 123456789
@@ -46,7 +46,7 @@ class TestYtToMp3:
 
         url = "https://youtu.be/GFokXnCCMf8?si=ie8ydID-XH0F2yrM"
         
-        with patch('commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
+        with patch('src.commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
             # Run the async function
             await setup_yt_to_mp3(mock_interaction, url)
             
@@ -60,7 +60,7 @@ class TestYtToMp3:
     async def test_invalid_url_structure(self, mock_interaction):
         url = "https://youtu.be/GFsdsdsdsdsdsdsd"
 
-        with patch('commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
+        with patch('src.commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
             # Run the async function
             await setup_yt_to_mp3(mock_interaction, url)
             
@@ -73,7 +73,7 @@ class TestYtToMp3:
     @pytest.mark.asyncio
     async def test_invalid_video(self, mock_interaction):
         url = "https://youtu.be/GFsdsdsdsds"
-        with patch('commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
+        with patch('src.commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
             # Run the async function
             await setup_yt_to_mp3(mock_interaction, url)
             
@@ -86,7 +86,7 @@ class TestYtToMp3:
     @pytest.mark.asyncio
     async def test_long_duration(self, mock_interaction):
         url="https://youtu.be/oIpuh9B54_Y?si=xPBGuRBJLQDTyTA3"
-        with patch('commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
+        with patch('src.commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
             # Run the async function
             await setup_yt_to_mp3(mock_interaction, url)
             

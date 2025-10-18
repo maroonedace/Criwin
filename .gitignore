@@ -4,9 +4,14 @@ __pycache__/
 # Distribution / packaging
 downloads/
 
-# Environments
+# Test cache
+.pytest_cache/
+
+# Virtual environment
+.venv/
+
+# Environment variables
 .env
-.venv
 
 # Sounds
 sounds
