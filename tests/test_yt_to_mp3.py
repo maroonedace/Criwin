@@ -1,14 +1,10 @@
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
 from discord import Interaction, User
-from commands.yt_to_mp3.file import FILE_INVALID_MESSAGE, LIMIT_DOWNLOAD_MESSAGE, LONG_DURATION_MESSAGE, URL_MISMATCH_MESSAGE, setup_yt_to_mp3, active_downloads
+from commands.yt_to_mp3.file import FILE_INVALID_MESSAGE, LIMIT_DOWNLOAD_MESSAGE, LONG_DURATION_MESSAGE, INVALID_URL_STRUCTURE_MESSAGE, is_url_valid, setup_yt_to_mp3, active_downloads
 
 class TestYtToMp3:
     user_id = 123456789
-    invalid_url = "https://youtu.be/GFsdsdsdsdsdsdsd"
-    invalid_url_2 = "https://youtu.be/GFsdsdsdsds"
-    valid_url = "https://youtu.be/GFokXnCCMf8?si=ie8ydID-XH0F2yrM"
-    long_duration_url="https://youtu.be/oIpuh9B54_Y?si=xPBGuRBJLQDTyTA3"
 
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
@@ -26,14 +22,33 @@ class TestYtToMp3:
         interaction.response.defer = AsyncMock()
         return interaction
 
+    def test_if_url_valid(self):
+        # Add user to active downloads
+        valid_url_structures = [
+            "https://www.youtube.com/watch?v=ZX3Rioe-WB8",
+            "https://youtu.be/0tdyU_gW6WE?si=49enz2ukzDfX2zaP",
+            "https://www.youtube.com/shorts/Uw9XGagnDZo",
+            "https://youtube.com/shorts/Uw9XGagnDZo?si=4E3G1wya05Ky986V",
+            "https://www.youtube.com/watch?v=0tdyU_gW6WE&list=RD0tdyU_gW6WE&start_radio=1",
+            "https://m.youtube.com/watch?v=DfWooe9-zOg&pp=ugUEEgJlbg%3D%3D",
+            "https://m.youtube.com/shorts/8PDlV8htpFo",
+        ]
+
+        for url in valid_url_structures:
+            is_valid = is_url_valid(url)
+
+            assert is_valid
+
     @pytest.mark.asyncio
     async def test_multiple_downloads(self, mock_interaction):
         # Add user to active downloads
         active_downloads.add(mock_interaction.user.id)
+
+        url = "https://youtu.be/GFokXnCCMf8?si=ie8ydID-XH0F2yrM"
         
         with patch('commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
             # Run the async function
-            await setup_yt_to_mp3(mock_interaction, self.valid_url)
+            await setup_yt_to_mp3(mock_interaction, url)
             
             # Assert that send_message was called with correct arguments
             mock_send_message.assert_called_once_with(
@@ -42,22 +57,25 @@ class TestYtToMp3:
             )
     
     @pytest.mark.asyncio
-    async def test_invalid_url(self, mock_interaction):
+    async def test_invalid_url_structure(self, mock_interaction):
+        url = "https://youtu.be/GFsdsdsdsdsdsdsd"
+
         with patch('commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
             # Run the async function
-            await setup_yt_to_mp3(mock_interaction, self.invalid_url)
+            await setup_yt_to_mp3(mock_interaction, url)
             
             # Assert that send_message was called with correct arguments
             mock_send_message.assert_called_once_with(
                 mock_interaction, 
-                URL_MISMATCH_MESSAGE
+                INVALID_URL_STRUCTURE_MESSAGE
             )
     
     @pytest.mark.asyncio
     async def test_invalid_video(self, mock_interaction):
+        url = "https://youtu.be/GFsdsdsdsds"
         with patch('commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
             # Run the async function
-            await setup_yt_to_mp3(mock_interaction, self.invalid_url_2)
+            await setup_yt_to_mp3(mock_interaction, url)
             
             # Assert that send_message was called with correct arguments
             mock_send_message.assert_called_once_with(
@@ -67,9 +85,10 @@ class TestYtToMp3:
     
     @pytest.mark.asyncio
     async def test_long_duration(self, mock_interaction):
+        url="https://youtu.be/oIpuh9B54_Y?si=xPBGuRBJLQDTyTA3"
         with patch('commands.yt_to_mp3.file.send_message', new_callable=AsyncMock) as mock_send_message:
             # Run the async function
-            await setup_yt_to_mp3(mock_interaction, self.long_duration_url)
+            await setup_yt_to_mp3(mock_interaction, url)
             
             # Assert that send_message was called with correct arguments
             mock_send_message.assert_called_once_with(

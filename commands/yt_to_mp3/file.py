@@ -7,8 +7,20 @@ from commands.utils import send_message
 from yt_dlp import YoutubeDL
 
 # Regular expressions for URL validation
-YOUTUBE_RE = re.compile(r'^https?://(?:www\.)?youtu\.be/(?P<id>[\w-]{11})(?:\?.*)?$', re.I)
-SHORTS_RE = re.compile(r'^https?://(?:www\.|m\.)?youtube\.com/shorts/(?P<id>[\w-]{11})(?:\?.*)?$', re.I)
+YOUTUBE_RE = re.compile(
+    r'^https?://(?:www\.|m\.)?youtube\.com/watch\?v=[A-Za-z0-9_-]{11}(?:[&#?][^#\s]*)*$', 
+    re.I
+)
+
+YOUTUBE_SHORT_RE = re.compile(
+    r'^https?://(?:www\.|m\.)?youtube\.com/shorts/[A-Za-z0-9_-]{11}(?:[&#?][^#\s]*)*$', 
+    re.I
+)
+
+YOUTUBE_SHORTENED_RE = re.compile(
+    r'^https?://youtu\.be/[A-Za-z0-9_-]{11}(?:[&#?][^#\s]*)*$', 
+    re.I
+)
 
 # Download Directory
 DOWNLOAD_DIR = Path("downloads")
@@ -39,7 +51,7 @@ MAX_VIDEO_LENGTH = 5 * 60
 # Configuration constants
 MAX_VIDEO_LENGTH = 5 * 60  # 5 minutes in seconds
 LIMIT_DOWNLOAD_MESSAGE = '⚠️ You already have a download in progress.'
-URL_MISMATCH_MESSAGE = '⚠️ Invalid URL structure: Only short or video share links are accepted.'
+INVALID_URL_STRUCTURE_MESSAGE = '⚠️ Invalid URL structure: Only short or video share links are accepted.'
 FILE_INVALID_MESSAGE = '⚠️ Invalid Youtube URL.'
 LONG_DURATION_MESSAGE = '⚠️ Video is too long (maximum 5 minutes).'
 
@@ -67,8 +79,8 @@ async def setup_yt_to_mp3(interaction: Interaction, url: str) -> None:
         return
     
     # Validate URL structure - must match YouTube share URL patterns
-    if not (YOUTUBE_RE.match(url) or SHORTS_RE.match(url)):
-        await send_message(interaction, URL_MISMATCH_MESSAGE)
+    if not (is_url_valid(url)):
+        await send_message(interaction, INVALID_URL_STRUCTURE_MESSAGE)
         return
 
     # Add user to active downloads tracking
@@ -144,4 +156,11 @@ def download_clip(url: str) -> Path:
         
     except Exception as error:
         raise ValueError(FILE_INVALID_MESSAGE) from error
-    
+
+
+def is_url_valid(url) -> bool:
+    return (
+        YOUTUBE_RE.match(url) or 
+        YOUTUBE_SHORT_RE.match(url) or 
+        YOUTUBE_SHORTENED_RE.match(url)
+    )
