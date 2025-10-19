@@ -1,11 +1,10 @@
 from src.commands.yt_to_mp3.file import setup_yt_to_mp3
+from src.commands.soundboard.file import setup_soundboard
 from .leave import setup_leave
-from .audioclip import setup_audioclip
 from .soundboard import setup_soundboard
 from discord import Interaction, app_commands
 
 def setup_commands(tree: app_commands.CommandTree):
-    setup_audioclip(tree)
     setup_soundboard(tree)
     setup_leave(tree)
 
@@ -15,4 +14,9 @@ def setup_commands(tree: app_commands.CommandTree):
     )
     async def file(interaction: Interaction, url: str):
         await setup_yt_to_mp3(interaction, url)
+
+    @tree.command(name="soundboard", description="Play a sound in your voice channel.")
+    @app_commands.describe(sound_name="Select a sound to play")
+    async def file(interaction: Interaction, url: str):
+        await setup_soundboard(interaction, url)
 
