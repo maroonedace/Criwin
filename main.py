@@ -2,7 +2,7 @@ import os
 import discord
 from dotenv import load_dotenv
 from discord import Intents, app_commands, Object
-from commands import setup_commands
+from src.commands import setup_commands
 
 # Setting up to load ENV values
 load_dotenv()

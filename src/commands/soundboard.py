@@ -4,7 +4,7 @@ from discord import Interaction, app_commands, FFmpegPCMAudio
 import discord
 from src.utils.soundboard import add_sound, delete_sound, load_sounds, list_sounds
 
-def setup_soundboard(tree: app_commands.CommandTree):
+def setup_soundboard2(tree: app_commands.CommandTree):
     # ======================
     # Helper Functions
     # ======================
