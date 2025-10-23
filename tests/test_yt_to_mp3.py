@@ -1,7 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
 from discord import Interaction, User
-from src.commands.yt_to_mp3.file import FILE_INVALID_MESSAGE, LIMIT_DOWNLOAD_MESSAGE, LONG_DURATION_MESSAGE, INVALID_URL_STRUCTURE_MESSAGE, is_url_valid, setup_yt_to_mp3, active_downloads
+from src.commands.yt_to_mp3 import FILE_INVALID_MESSAGE, LONG_DURATION_MESSAGE
+from src.commands.yt_to_mp3.file import LIMIT_DOWNLOAD_MESSAGE, INVALID_URL_STRUCTURE_MESSAGE, is_url_valid, setup_yt_to_mp3, active_downloads
 
 class TestYtToMp3:
     user_id = 123456789

@@ -1,0 +1,73 @@
+import asyncio
+from discord import Interaction, FFmpegPCMAudio
+
+from src.commands.soundboard import get_sound_file, get_sounds
+from src.commands.utils import send_message
+
+VOICE_STATE_INVALID_MESSAGE = "❌ You must be in a voice channel."
+
+async def setup_soundboard_play(interaction: Interaction, sound_name: str) -> None:
+    # Acknowledge the interaction and defer response
+    await interaction.response.defer(ephemeral=True)
+
+    # Check user's voice state
+    user = interaction.user
+    if not user.voice or not user.voice.channel:
+        await send_message(interaction, VOICE_STATE_INVALID_MESSAGE)
+        return
+
+    sounds = await get_sounds(interaction)
+    
+    # Find the requested sound
+    sound_entry = next((sound for sound in sounds if sound["name"] == sound_name), None)
+
+    if not sound_entry:
+        await send_message(interaction, "❌ That sound isn't available.")
+        return
+
+    file_name = sound_entry["file_name"]
+
+    await get_sound_file(interaction, file_name)
+
+    channel = user.voice.channel
+    vc = interaction.guild.voice_client
+
+    # Connect to voice channel
+    try:
+        if vc and vc.is_connected():
+            await vc.move_to(channel)
+        else:
+            vc = await channel.connect(timeout=10.0, reconnect=True)
+    except Exception:
+        await send_message(interaction, "❌ Failed to join voice channel.")
+        return
+    
+    # Play the sound
+    try:
+        source_path = f"sounds/{file_name}"
+        source = FFmpegPCMAudio(source_path)
+        done = asyncio.Event()
+        
+        def after_playing(error: Exception = None):
+            if error:
+                print(f"Error playing sound: {error}")
+            interaction.client.loop.call_soon_threadsafe(done.set)
+        
+        vc.play(source, after=after_playing)
+        await send_message(interaction, f"▶️ Playing **{sound_name}**.")
+        
+        # Wait for playback to finish
+        await done.wait()
+        
+        # Disconnect after playback
+        if vc and vc.is_connected():
+            await vc.disconnect()
+        
+    except Exception as e:
+        # Ensure cleanup on error
+        try:
+            if vc and vc.is_connected():
+                await vc.disconnect()
+        except Exception:
+            pass
+        await send_message(interaction, f"❌ Could not play sound: {e}")
