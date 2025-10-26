@@ -1,11 +1,9 @@
 import asyncio
-import re
 from pathlib import Path
 from typing import Optional
 from discord import Interaction, File
 from src.commands.utils import send_message
-
-from src.commands.yt_to_mp3 import download_clip, is_url_valid
+from src.commands.yt_to_mp3.utils import download_clip, is_url_valid
 
 # Global set to track active downloads per user
 active_downloads: set[int] = set()
