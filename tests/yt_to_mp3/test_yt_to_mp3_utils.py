@@ -1,7 +1,7 @@
 import re
 import pytest
 import yt_dlp
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 from src.commands.yt_to_mp3.utils import LONG_DURATION_MESSAGE, MAX_VIDEO_LENGTH, URL_INVALID_MESSAGE, download_clip, is_url_valid
 
 def test_if_url_valid():

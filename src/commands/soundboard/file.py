@@ -2,9 +2,8 @@
 from typing import List
 from discord import Interaction, app_commands
 
-from src.commands.soundboard import autocomplete_sound_name, get_sound_file, get_sounds
 from src.commands.soundboard.play_soundboard.file import setup_soundboard_play
-from src.commands.utils import send_message
+from src.commands.soundboard.utils import autocomplete_sound_name
 
 def setup_soundboard(tree: app_commands.CommandTree):
     @tree.command(name="soundboard", description="Play a sound in your voice channel.")
@@ -13,5 +12,5 @@ def setup_soundboard(tree: app_commands.CommandTree):
         await setup_soundboard_play(interaction, sound_name)
 
     @soundboard_play.autocomplete("sound_name")
-    async def sound_autocomplete(interaction: Interaction, current: str) -> List[app_commands.Choice[str]]:
-        return await autocomplete_sound_name(interaction, current)
+    async def sound_autocomplete(_interaction: Interaction, current: str) -> List[app_commands.Choice[str]]:
+        return await autocomplete_sound_name(current)

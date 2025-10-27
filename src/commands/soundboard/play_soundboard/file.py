@@ -1,10 +1,11 @@
 import asyncio
 from discord import Interaction, FFmpegPCMAudio
 
-from src.commands.soundboard import get_sound_file, get_sounds
+from src.commands.soundboard.utils import get_sound_file, get_sounds
 from src.commands.utils import send_message
 
 VOICE_STATE_INVALID_MESSAGE = "❌ You must be in a voice channel."
+UNAVAILABLE_SOUND_MESSAGE = "❌ That sound isn't available."
 
 async def setup_soundboard_play(interaction: Interaction, sound_name: str) -> None:
     # Acknowledge the interaction and defer response
@@ -15,14 +16,19 @@ async def setup_soundboard_play(interaction: Interaction, sound_name: str) -> No
     if not user.voice or not user.voice.channel:
         await send_message(interaction, VOICE_STATE_INVALID_MESSAGE)
         return
+    
+    try:
+        sounds = get_sounds()
 
-    sounds = await get_sounds(interaction)
+    except ValueError as err:
+        await send_message(interaction, str(err))
+        return 
     
     # Find the requested sound
     sound_entry = next((sound for sound in sounds if sound["name"] == sound_name), None)
 
     if not sound_entry:
-        await send_message(interaction, "❌ That sound isn't available.")
+        await send_message(interaction, UNAVAILABLE_SOUND_MESSAGE)
         return
 
     file_name = sound_entry["file_name"]
