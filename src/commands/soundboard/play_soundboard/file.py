@@ -33,7 +33,7 @@ async def setup_soundboard_play(interaction: Interaction, sound_name: str) -> No
 
     file_name = sound_entry["file_name"]
 
-    await get_sound_file(interaction, file_name)
+    get_sound_file(file_name)
 
     channel = user.voice.channel
     vc = interaction.guild.voice_client

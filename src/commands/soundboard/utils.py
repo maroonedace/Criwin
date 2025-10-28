@@ -4,7 +4,6 @@ import boto3
 from cloudflare import Cloudflare
 from discord import app_commands
 from dotenv import load_dotenv
-from src.commands.utils import send_message
 
 class Sounds:
     name: str
@@ -28,6 +27,7 @@ cloudflare_region_name = os.getenv('CLOUDFLARE_REGION_NAME')
 
 CLOUDFLARE_CLIENT_ERROR_MESSAGE = "❌ Could not connect to Cloudflare client."
 CLOUDFLARE_DATABASE_ERROR_MESSAGE = "❌ Could not connect to database."
+NO_DOWNLOAD_SOUND_ERROR_MESSAGE = "❌ Could not download sound"
 NO_SOUNDS_ERROR_MESSAGE = "❌ No sounds available."
 
 def get_sounds() -> List[Sounds]:
@@ -55,7 +55,7 @@ def get_sounds() -> List[Sounds]:
         raise ValueError(NO_SOUNDS_ERROR_MESSAGE)
     return sound_items
 
-async def get_sound_file(interaction, file_name) -> None:
+def get_sound_file(file_name) -> None:
     try:
         s3 = boto3.client(
         service_name ="s3",
@@ -66,13 +66,12 @@ async def get_sound_file(interaction, file_name) -> None:
     )
     
     except Exception:
-        await send_message(interaction, "❌ Could not connect to Cloudflare S3 client.")
-        return 
+        raise ValueError(CLOUDFLARE_CLIENT_ERROR_MESSAGE)
     
     try:
         s3.download_file(cloudflare_bucket_name, f"soundboard/{file_name}", f"sounds/{file_name}")
-    except Exception as e:
-        print(f"Error downloading file from R2: {e}")
+    except Exception:
+        raise ValueError(NO_DOWNLOAD_SOUND_ERROR_MESSAGE)
 
 async def autocomplete_sound_name(current: str) -> List[app_commands.Choice[str]]:
     """Generate autocomplete choices for sound names."""
