@@ -26,20 +26,21 @@ cloudflare_secret_access_key = os.getenv('CLOUDFLARE_SECRET_ACCESS_KEY')
 cloudflare_bucket_name = os.getenv('CLOUDFLARE_BUCKET_NAME')
 cloudflare_region_name = os.getenv('CLOUDFLARE_REGION_NAME')
 
-CLOUDFLARE_CLIENT_ERROR_MESSAGE = "❌ Could not connect to Cloudflare client."
+CLOUDFLARE_DATABASE_CLIENT_ERROR_MESSAGE = "❌ Could not connect to Cloudflare database client."
+CLOUDFLARE_S3_CLIENT_ERROR_MESSAGE = "❌ Could not connect to Cloudflare s3 client."
+
 CLOUDFLARE_DATABASE_ERROR_MESSAGE = "Could not connect to database."
 NO_DOWNLOAD_SOUND_ERROR_MESSAGE = "❌ Could not download sound"
 NO_SOUNDS_ERROR_MESSAGE = "❌ No sounds available."
-DUPLICATE_DISPLAY_NAME_MESSAGE = "A sound with that Display Name already exists."
 
-def get_cloudflare_client() -> Cloudflare:
+def get_cloudflare_database_client() -> Cloudflare:
     try:
         client = Cloudflare(api_token=cloudflare_api_token)
         return client
     except Exception:
-        raise ValueError(CLOUDFLARE_CLIENT_ERROR_MESSAGE)
+        raise ValueError(CLOUDFLARE_DATABASE_CLIENT_ERROR_MESSAGE)
 
-def get_s3_client():
+def get_cloudflare_s3_client():
     try:
         s3 = boto3.client(
             service_name ="s3",
@@ -50,11 +51,11 @@ def get_s3_client():
         )
         return s3
     except Exception:
-        raise ValueError(CLOUDFLARE_CLIENT_ERROR_MESSAGE)
+        raise ValueError(CLOUDFLARE_S3_CLIENT_ERROR_MESSAGE)
 
 
 def get_sounds() -> List[Sounds]:
-    client = get_cloudflare_client()
+    client = get_cloudflare_database_client()
     try:
         query = f"SELECT * FROM {cloudflare_table_name};"
         
@@ -73,29 +74,28 @@ def get_sounds() -> List[Sounds]:
         raise ValueError(NO_SOUNDS_ERROR_MESSAGE)
     return sound_items
 
-async def upload_sound_file(name: str, file: discord.Attachment) -> None:
-    s3 = get_s3_client()
-    
-    sounds = get_sounds()
-    
-    if any(sound["name"] == name for sound in sounds):
-        raise ValueError(DUPLICATE_DISPLAY_NAME_MESSAGE)
-    
+async def upload_sound_file(name: str, file: discord.Attachment) -> None:    
     try:
-        file_data = await file.read()
+        upload_sound_file_to_s3(file)
+        upload_sound_file_to_database(name, file.filename)
+    except Exception as e:
+        raise ValueError(f"Could not upload sound file: {e}")
+
+def upload_sound_file_to_s3(file: discord.Attachment) -> None:
+    s3 = get_cloudflare_s3_client()
+    try:
+        file_data = file.read()
         s3.put_object(
             Bucket=cloudflare_bucket_name,
             Key=f"soundboard/{file.filename}",
             Body=file_data,
             ContentType=file.content_type
         )
-        upload_sound_file_to_database(name, file.filename)
-    except Exception as e:
-        raise ValueError(f"Could not upload sound file: {e}")
+    except Exception:
+        raise ValueError("Could not upload sound file to S3.")
 
 def upload_sound_file_to_database(name: str, file_name: str) -> None:
-    client = get_cloudflare_client()
-    
+    client = get_cloudflare_database_client()
     try:
         query = f"""
             INSERT INTO "{cloudflare_table_name}" (name, file_name) 
@@ -115,10 +115,44 @@ def upload_sound_file_to_database(name: str, file_name: str) -> None:
         )
     except Exception as e:
         raise ValueError("Could not upload sound file to database." + str(e))
-    
+
+async def delete_sound(name: str, file_name: str) -> None:
+    try:
+        delete_s3_file(file_name)
+        delete_sound_from_database(name)
+    except Exception as e:
+        raise ValueError(f"Could not delete sound file: {e}")
+
+def delete_s3_file(name: str) -> None:
+    s3 = get_cloudflare_s3_client()
+    try:
+        s3.delete_object(Bucket=cloudflare_bucket_name, Key=f"soundboard/{name}")
+    except Exception:
+        raise ValueError("Could not delete sound file from S3 storage.")
+
+def delete_sound_from_database(name: str) -> None:
+    client = get_cloudflare_database_client()
+    try:
+        query = f"""
+            DELETE FROM "{cloudflare_table_name}" 
+            WHERE name = :name;
+        """
+        
+        params = [
+            name
+        ]
+        
+        client.d1.database.query(
+            database_id=cloudflare_database_id,
+            account_id=cloudflare_account_id,
+            sql=query,
+            params=params
+        )
+    except Exception as e:
+        raise ValueError("Could not delete sound from database." + str(e))
 
 def get_sound_file(file_name) -> None:
-    s3 = get_s3_client()
+    s3 = get_cloudflare_s3_client()
     try:
         s3.download_file(cloudflare_bucket_name, f"soundboard/{file_name}", f"sounds/{file_name}")
     except Exception:
@@ -127,7 +161,10 @@ def get_sound_file(file_name) -> None:
 async def autocomplete_sound_name(current: str) -> List[app_commands.Choice[str]]:
     """Generate autocomplete choices for sound names."""
     sounds = get_sounds()
+    filtered_sounds = [
+        sound for sound in sounds if current.lower() in sound["name"].lower()
+    ]
     return [
         app_commands.Choice(name=sound["name"], value=sound["name"])
-        for sound in sounds
+        for sound in filtered_sounds
     ]

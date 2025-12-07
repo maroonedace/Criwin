@@ -10,6 +10,7 @@ ID_RE = re.compile(r"^[a-zA-Z0-9 _'-]{1,64}$")
 
 DISPLAY_NAME_INVALID_MESSAGE = "Display Name is invalid. It must be no more than 64 characters."
 INVALID_AUDIO_MESSAGE = "Only audio files are allowed (.mp3, .wav, etc.)."
+DUPLICATE_DISPLAY_NAME_MESSAGE = "❌ A sound with that Display Name already exists."
 
 ALLOWED_CONTENT_TYPES = {"audio/mpeg", "audio/wav", "audio/mp3", "audio/flac"}
 
@@ -25,16 +26,26 @@ async def setup_soundboard_add(interaction: Interaction, sound_name: str, sound_
     # Confirms that the uploaded file is an audio file
     if sound_file.content_type not in ALLOWED_CONTENT_TYPES:
         await send_message(interaction, INVALID_AUDIO_MESSAGE)
-        return 
+        return
+    
+    sounds = get_sounds()
+    
+    print(sounds)
+    
+    if any(sound["name"] == sound_name for sound in sounds):
+        await send_message(interaction, DUPLICATE_DISPLAY_NAME_MESSAGE)
+        return
     
     try:
         await upload_sound_file(sound_name, sound_file)
-        await send_message(
-            interaction,
-            f"✅ Added **{sound_name}** → {sound_file.filename}"
-            )
-    except Exception as e:
-        await send_message(interaction, f"❌ {e}")
+    except ValueError as err:
+        await send_message(interaction, str(err))
+        return
+
+    await send_message(
+        interaction,
+        f"✅ Added **{sound_name}** → {sound_file.filename}"
+        )
     
     
     
