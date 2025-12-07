@@ -1,5 +1,5 @@
 from src.commands.yt_to_mp3.file import setup_yt_to_mp3
-from src.commands.soundboard.file import autocomplete_sound_name, setup_soundboard
+from src.commands.soundboard.setup_soundboard import autocomplete_sound_name, setup_soundboard
 from .leave import setup_leave
 from discord import Interaction, app_commands
 

@@ -11,15 +11,18 @@ ID_RE = re.compile(r"^[a-zA-Z0-9 _'-]{1,64}$")
 DISPLAY_NAME_INVALID_MESSAGE = "Display Name is invalid. It must be no more than 64 characters."
 INVALID_AUDIO_MESSAGE = "Only audio files are allowed (.mp3, .wav, etc.)."
 
-ALLOWED_CONTENT_TYPES = {"audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp3"}
+ALLOWED_CONTENT_TYPES = {"audio/mpeg", "audio/wav", "audio/mp3", "audio/flac"}
 
 async def setup_soundboard_add(interaction: Interaction, sound_name: str, sound_file: discord.Attachment) -> None:
     # Acknowledge the interaction and defer response
     await interaction.response.defer(ephemeral=True)
     
+    # Confirms that the sound name is valid
     if not ID_RE.match(sound_name):
         await send_message(interaction, DISPLAY_NAME_INVALID_MESSAGE)
         return
+    
+    # Confirms that the uploaded file is an audio file
     if sound_file.content_type not in ALLOWED_CONTENT_TYPES:
         await send_message(interaction, INVALID_AUDIO_MESSAGE)
         return 

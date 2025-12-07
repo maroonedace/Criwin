@@ -55,7 +55,6 @@ def get_s3_client():
 
 def get_sounds() -> List[Sounds]:
     client = get_cloudflare_client()
-    
     try:
         query = f"SELECT * FROM {cloudflare_table_name};"
         
@@ -78,7 +77,6 @@ async def upload_sound_file(name: str, file: discord.Attachment) -> None:
     s3 = get_s3_client()
     
     sounds = get_sounds()
-
     
     if any(sound["name"] == name for sound in sounds):
         raise ValueError(DUPLICATE_DISPLAY_NAME_MESSAGE)
@@ -87,7 +85,7 @@ async def upload_sound_file(name: str, file: discord.Attachment) -> None:
         file_data = await file.read()
         s3.put_object(
             Bucket=cloudflare_bucket_name,
-            Key=f"soundboard/{name}",
+            Key=f"soundboard/{file.filename}",
             Body=file_data,
             ContentType=file.content_type
         )
@@ -97,8 +95,6 @@ async def upload_sound_file(name: str, file: discord.Attachment) -> None:
 
 def upload_sound_file_to_database(name: str, file_name: str) -> None:
     client = get_cloudflare_client()
-    
-    print(name, file_name)
     
     try:
         query = f"""
@@ -123,7 +119,6 @@ def upload_sound_file_to_database(name: str, file_name: str) -> None:
 
 def get_sound_file(file_name) -> None:
     s3 = get_s3_client()
-    
     try:
         s3.download_file(cloudflare_bucket_name, f"soundboard/{file_name}", f"sounds/{file_name}")
     except Exception:

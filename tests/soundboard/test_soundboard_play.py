@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
 from discord import Interaction, User, VoiceState
-from src.commands.soundboard.play_soundboard.file import UNAVAILABLE_SOUND_MESSAGE, VOICE_STATE_INVALID_MESSAGE, setup_soundboard_play
+from src.commands.soundboard.soundboard_play import UNAVAILABLE_SOUND_MESSAGE, VOICE_STATE_INVALID_MESSAGE, setup_soundboard_play
 
 class TestSoundboard:
     user_id = 123456789
@@ -29,7 +29,7 @@ class TestSoundboard:
     async def test_invalid_voice_state(self, mock_invalid_interaction):
         sound_name = "Sus"
         
-        with patch('src.commands.soundboard.play_soundboard.file.send_message', new_callable=AsyncMock) as mock_send_message:
+        with patch('src.commands.soundboard.soundboard_play.send_message', new_callable=AsyncMock) as mock_send_message:
             # Add user to active downloads
             await setup_soundboard_play(mock_invalid_interaction, sound_name)
             
@@ -42,9 +42,9 @@ class TestSoundboard:
     @pytest.mark.asyncio
     async def test_unavailable_sounds(self, mock_valid_interaction):
         sound_name = "Sus"
-        with patch('src.commands.soundboard.play_soundboard.file.get_sounds') as mock_sounds:
+        with patch('src.commands.soundboard.soundboard_play.get_sounds') as mock_sounds:
             mock_sounds.side_effect = ValueError("Invalid")
-            with patch('src.commands.soundboard.play_soundboard.file.send_message', new_callable=AsyncMock) as mock_send_message:
+            with patch('src.commands.soundboard.soundboard_play.send_message', new_callable=AsyncMock) as mock_send_message:
                 # Add user to active downloads
                 await setup_soundboard_play(mock_valid_interaction, sound_name)
                 
@@ -57,9 +57,9 @@ class TestSoundboard:
     @pytest.mark.asyncio
     async def test_unavailable_sound(self, mock_valid_interaction):
         sound_name = "Sus"
-        with patch('src.commands.soundboard.play_soundboard.file.get_sounds') as mock_sounds:
+        with patch('src.commands.soundboard.soundboard_play.get_sounds') as mock_sounds:
             mock_sounds.return_value = []
-            with patch('src.commands.soundboard.play_soundboard.file.send_message', new_callable=AsyncMock) as mock_send_message:
+            with patch('src.commands.soundboard.soundboard_play.send_message', new_callable=AsyncMock) as mock_send_message:
                 # Add user to active downloads
                 await setup_soundboard_play(mock_valid_interaction, sound_name)
                 

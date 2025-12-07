@@ -3,8 +3,8 @@ from typing import List
 from discord import Interaction, app_commands
 import discord
 
-from src.commands.soundboard.add_soundboard.file import setup_soundboard_add
-from src.commands.soundboard.play_soundboard.file import setup_soundboard_play
+from src.commands.soundboard.soundboard_add import setup_soundboard_add
+from src.commands.soundboard.soundboard_play import setup_soundboard_play
 from src.commands.soundboard.utils import autocomplete_sound_name
 
 def setup_soundboard(tree: app_commands.CommandTree):
