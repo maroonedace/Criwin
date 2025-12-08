@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 from discord import Interaction, FFmpegPCMAudio
 
 from src.commands.soundboard.utils import get_sound_file, get_sounds
@@ -32,8 +33,11 @@ async def setup_soundboard_play(interaction: Interaction, sound_name: str) -> No
         return
 
     file_name = sound_entry["file_name"]
+    
+    file_path = Path("sounds") / file_name
 
-    get_sound_file(file_name)
+    if not file_path.exists(): 
+        get_sound_file(file_name)
 
     channel = user.voice.channel
     vc = interaction.guild.voice_client

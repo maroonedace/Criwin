@@ -23,8 +23,6 @@ async def setup_soundboard_delete(interaction: Interaction, sound_name: str) -> 
         await send_message(interaction, UNAVAILABLE_SOUND_MESSAGE)
         return
     
-    sounds = get_sounds()
-    
     try:
         await delete_sound(sound_name, sound_entry["file_name"])
     except ValueError as err:
