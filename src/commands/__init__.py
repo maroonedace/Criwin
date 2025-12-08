@@ -1,4 +1,4 @@
-from src.commands.yt_to_mp3.file import setup_yt_to_mp3
+from src.commands.yt_to_mp3.setup import setup_yt_to_mp3
 from src.commands.soundboard.setup import setup_soundboard
 from .leave.leave import setup_leave
 from discord import Interaction, app_commands

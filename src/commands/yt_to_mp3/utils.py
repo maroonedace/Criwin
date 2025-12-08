@@ -27,11 +27,6 @@ YTDL_META = {
 
 YTDL_BASE = {
     "format": "bestaudio/best",
-    "postprocessors": [{
-        "key": "FFmpegExtractAudio", 
-        "preferredcodec": "mp3", 
-        "preferredquality": 192
-    }],
     "quiet": True, 
     "noplaylist": True,
 }
@@ -70,11 +65,16 @@ def download_clip(url: str) -> Path:
         # Check video duration limit
         if duration > MAX_VIDEO_LENGTH:
             raise ValueError(LONG_DURATION_MESSAGE)
+        
+        # Get the extension of the best audio format
+        audio_ext = video_info.get("ext", "mp3")  # fallback to mp3
+        if "audio_ext" in video_info:
+            audio_ext = video_info["audio_ext"]
 
         # Prepare download path
-        output_path = DOWNLOAD_DIR / f"{title}.mp3"
+        output_path = DOWNLOAD_DIR / f"{title}.{audio_ext}"
         ydl_opts = dict(YTDL_BASE)
-        ydl_opts["outtmpl"] = str(output_path.with_suffix(".%(ext)s"))
+        ydl_opts["outtmpl"] = str(output_path)
 
         # Download and convert the video to MP3
         ydl = YoutubeDL(ydl_opts)
