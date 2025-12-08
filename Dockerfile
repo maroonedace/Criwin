@@ -13,7 +13,7 @@ RUN apt-get -y upgrade
 RUN apt-get install -y ffmpeg
 
 # Install packages
-RUN pip install yt-dlp discord.py[voice] dotenv
+RUN pip install yt-dlp discord.py[voice] dotenv boto3 cloudflare
 
 # Command to run application
 CMD ["python", "./main.py"] 
