@@ -76,15 +76,15 @@ def get_sounds() -> List[Sounds]:
 
 async def upload_sound_file(name: str, file: discord.Attachment) -> None:    
     try:
-        upload_sound_file_to_s3(file)
+        await upload_sound_file_to_s3(file)
         upload_sound_file_to_database(name, file.filename)
     except Exception as e:
         raise ValueError(f"Could not upload sound file: {e}")
 
-def upload_sound_file_to_s3(file: discord.Attachment) -> None:
+async def upload_sound_file_to_s3(file: discord.Attachment) -> None:
     s3 = get_cloudflare_s3_client()
     try:
-        file_data = file.read()
+        file_data = await file.read()
         s3.put_object(
             Bucket=cloudflare_bucket_name,
             Key=f"soundboard/{file.filename}",

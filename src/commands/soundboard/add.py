@@ -9,10 +9,10 @@ from src.commands.utils import send_message
 ID_RE = re.compile(r"^[a-zA-Z0-9 _'-]{1,64}$")
 
 DISPLAY_NAME_INVALID_MESSAGE = "Display Name is invalid. It must be no more than 64 characters."
-INVALID_AUDIO_MESSAGE = "Only audio files are allowed (.mp3, .wav, etc.)."
+INVALID_AUDIO_MESSAGE = "Only audio files are allowed."
 DUPLICATE_DISPLAY_NAME_MESSAGE = "❌ A sound with that Display Name already exists."
 
-ALLOWED_CONTENT_TYPES = {"audio/mpeg", "audio/wav", "audio/mp3", "audio/flac"}
+ALLOWED_CONTENT_TYPES = {"audio/wav", "audio/mpeg", "audio/flac", "audio/mp4"}
 
 async def setup_soundboard_add(interaction: Interaction, sound_name: str, sound_file: discord.Attachment) -> None:
     # Acknowledge the interaction and defer response
@@ -29,8 +29,6 @@ async def setup_soundboard_add(interaction: Interaction, sound_name: str, sound_
         return
     
     sounds = get_sounds()
-    
-    print(sounds)
     
     if any(sound["name"] == sound_name for sound in sounds):
         await send_message(interaction, DUPLICATE_DISPLAY_NAME_MESSAGE)
