@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from yt_dlp import YoutubeDL
 import re
@@ -18,6 +19,9 @@ YOUTUBE_SHORTENED_RE = re.compile(
     re.I
 )
 
+# Download Directory
+DOWNLOAD_DIR = str(Path.home() / "Downloads")
+
 # yt-dlp configuration
 YTDL_META = {
     "quiet": True, 
@@ -27,10 +31,11 @@ YTDL_META = {
 
 YTDL_BASE = {
     "format": "bestaudio/best",
+    'outtmpl': os.path.join(DOWNLOAD_DIR, '%(title)s.%(ext)s'),
     "postprocessors": [{
         "key": "FFmpegExtractAudio", 
-        "preferredcodec": "flac",
-        "preferredquality": "0"
+        "preferredcodec": "mp3",
+        'preferredquality': '320',
     }],
     "quiet": True, 
     "noplaylist": True,
@@ -41,8 +46,6 @@ MAX_VIDEO_LENGTH = 5 * 60  # 5 minutes in seconds
 LONG_DURATION_MESSAGE = '⚠️ Video is too long (maximum 5 minutes).'
 URL_INVALID_MESSAGE = '⚠️ Invalid Youtube URL.'
 
-# Download Directory
-DOWNLOAD_DIR = Path("downloads")
 
 def download_clip(url: str) -> Path:
     """
@@ -71,16 +74,15 @@ def download_clip(url: str) -> Path:
         if duration > MAX_VIDEO_LENGTH:
             raise ValueError(LONG_DURATION_MESSAGE)
 
-        # Prepare download path
-        output_path = DOWNLOAD_DIR / f"{title}"
-        ydl_opts = dict(YTDL_BASE)
-        ydl_opts["outtmpl"] = str(output_path)
-
         # Download and convert the video to an audio file
-        ydl = YoutubeDL(ydl_opts)
-        ydl.extract_info(url, download=True)
+        ydl = YoutubeDL(YTDL_BASE)
+        info = ydl.extract_info(url, download=True)
+        downloaded_file_path = ydl.prepare_filename(info)
         
-        return output_path
+        base_name = os.path.splitext(downloaded_file_path)[0]
+        downloaded_file_path = Path(f"{base_name}.mp3")
+        
+        return downloaded_file_path
     
     except ValueError:
         # Re-raise validation errors (like duration limits)
