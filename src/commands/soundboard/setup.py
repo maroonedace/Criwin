@@ -14,12 +14,12 @@ def setup_soundboard(tree: app_commands.CommandTree):
     async def soundboard_play(interaction: Interaction, sound_name: str):
         await setup_soundboard_play(interaction, sound_name)
     
-    @tree.command(name="soundboard_add", description="Add a sound to the soundboard.")
+    @tree.command(name="soundboard-add", description="Add a sound to the soundboard.")
     @app_commands.describe(sound_name="Sound name", sound_file="Sound file")
     async def soundboard_add(interaction: Interaction, sound_name: str, sound_file: discord.Attachment):
         await setup_soundboard_add(interaction, sound_name, sound_file)
     
-    @tree.command(name="soundboard_delete", description="Add a sound to the soundboard.")
+    @tree.command(name="soundboard-delete", description="Add a sound to the soundboard.")
     @app_commands.describe(sound_name="Sound name")
     async def soundboard_delete(interaction: Interaction, sound_name: str):
         await setup_soundboard_delete(interaction, sound_name)
