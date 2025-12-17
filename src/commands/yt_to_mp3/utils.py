@@ -48,26 +48,12 @@ URL_INVALID_MESSAGE = '⚠️ Invalid Youtube URL.'
 
 
 def download_clip(url: str) -> Path:
-    """
-    Download and convert a YouTube video to MP3 in a separate thread.
-    
-    Args:
-        url: YouTube video URL
-        
-    Returns:
-        Path to the downloaded MP3 file
-        
-    Raises:
-        ValueError: For validation errors (duration)
-        Exception: For download/conversion errors
-    """
     try:
         # Extract video metadata
         ydl = YoutubeDL(YTDL_META)
         video_info = ydl.extract_info(url, download=False)
         
         # Extract video information
-        title = video_info.get("title", "unknown")
         duration = int(video_info.get("duration", 0))
 
         # Check video duration limit

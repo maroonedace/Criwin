@@ -28,6 +28,7 @@ tree = app_commands.CommandTree(client)
 async def setup_hook():
     # Clear existing commands to remove deprecated commands
     tree.clear_commands(guild=GUILD)
+    tree.clear_commands(guild=None) 
 
     # Function to set up discord commands
     setup_commands(tree)
@@ -35,6 +36,8 @@ async def setup_hook():
     # Sync to guild to sync commands immediately
     tree.copy_global_to(guild=GUILD)
     await tree.sync(guild=GUILD)
+    
+    await tree.sync(guild=None)
 
 @client.event
 async def on_ready():

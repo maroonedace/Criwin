@@ -14,17 +14,6 @@ LIMIT_DOWNLOAD_MESSAGE = '⚠️ You already have a download in progress.'
 INVALID_URL_STRUCTURE_MESSAGE = '⚠️ Invalid URL structure: Only short or video share links are accepted.'
 
 async def setup_yt_to_mp3(interaction: Interaction, url: str) -> None:
-    """
-    Convert a YouTube video to MP3 and send it to the user.
-    
-    Args:
-        interaction: Discord interaction object
-        url: YouTube video URL to convert
-        
-    Returns:
-        None
-    """
-
     # Acknowledge the interaction and defer response
     await interaction.response.defer(ephemeral=True)
 
