@@ -1,16 +1,14 @@
+import json
 import os
 from pathlib import Path
-import gallery_dl
+from typing import List
 from yt_dlp import YoutubeDL
 import re
-from gallery_dl import job, config as gconfig
-
-# Download Directory
-DOWNLOAD_DIR = str(Path.home() / "Downloads")
+from gallery_dl import config, job
 
 YTDL_REEL_CONFIG = {
     "format": "bestvideo+bestaudio/best",
-    'outtmpl': os.path.join(DOWNLOAD_DIR, '%(title)s.%(ext)s'),
+    'outtmpl': os.path.join("downloads", '%(title)s.%(ext)s'),
     "merge_output_format": "mp4",
     "prefer_ffmpeg": True,
     "quiet": True, 
@@ -48,34 +46,30 @@ def get_instagram_type(url: str) -> str:
     else:
         return "invalid"
 
-def download_post(url: str) -> Path:
-    download_path = Path("downloads/posts").resolve()
+def download_post(url: str) -> List[Path]:
+    download_path = Path("downloads").resolve()
     download_path.mkdir(parents=True, exist_ok=True)
+
+    # Load existing configuration
+    config.load()
+
+    # Set configuration using the correct internal API
+    # Based on the source: set(path, key, value)
+    config.set((), "base-directory", str(download_path))
     
-    gconfig.clear()
-    gconfig.load({
-        "cookies-from-browser": "vivaldi",
-        "base-directory": str(download_path),
-        "directory": "{category}/{author}",
-        "filename": "{title}_{num}.{extension}",
-        "extractor": {
-            "instagram": {
-                 "cookies": "C:\Users\mexim\Documents\GitHub\Python-Discord-Bot\cookies.txt"
-            }
-        }
+    # Set extractor configuration
+    config.set(("extractor",), "instagram", {
+        "cookies": "/Users/anthonyostia/Documents/GitHub/CriWin/cookies.txt"
     })
-    
-    before = set(download_path.rglob("*"))
-    
+
     try:
-        job.DownloadJob(url).run()
-    except Exception as e:
-        raise RuntimeError(f"Download failed: {e}")
+        download_job = job.DownloadJob(url)
+        download_job.run()
+    except Exception as error:
+        raise ValueError(f"Failed to download {url}", error)
 
-    after = set(download_path.rglob("*"))
-    new_files = [p for p in after - before if p.is_file()]
-
-    return new_files
+    downloaded_files = [f for f in download_path.rglob("*") if f.is_file()]
+    return downloaded_files[::-1]
     
 def download_reel(url: str) -> Path:
     try:

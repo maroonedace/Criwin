@@ -19,7 +19,6 @@ INVALID_URL_STRUCTURE_MESSAGE = (
     "⚠️ Invalid URL structure: Only reel or post links are accepted."
 )
 
-
 async def setup_insta_to_mp4(interaction: Interaction, url: str) -> None:
     # Acknowledge the interaction and defer response
     await interaction.response.defer(ephemeral=True)
@@ -53,16 +52,16 @@ async def setup_insta_to_mp4(interaction: Interaction, url: str) -> None:
             )
 
             # Send the file to the user
-            await interaction.followup.send(file=File(str(file_path)), ephemeral=True)
+            await interaction.followup.send(files=[File(str(f)) for f in file_path], ephemeral=True)
 
         except Exception as error:
             # Handle all download/conversion errors
             await send_message(interaction, str(error))
 
         finally:
-            # Cleanup: remove temporary file and release download lock
-            if file_path is not None:
-                file_path.unlink(missing_ok=True)
+            for file in file_path:
+                if file is not None:
+                    file.unlink(missing_ok=True)
             active_downloads.discard(user_id)
 
     else:
