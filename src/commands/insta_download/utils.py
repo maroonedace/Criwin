@@ -38,4 +38,4 @@ def download_insta(url: str) -> List[Path]:
         raise ValueError(f"Failed to download {url}", error)
 
     downloaded_files = [f for f in download_path.rglob("*") if f.is_file()]
-    return downloaded_files
+    return downloaded_files[::-1]
