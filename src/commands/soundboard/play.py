@@ -2,7 +2,7 @@ import asyncio
 from pathlib import Path
 from discord import Interaction, FFmpegPCMAudio
 
-from src.commands.soundboard.utils import get_sound_file, get_sounds
+from src.commands.soundboard.utils import download_sound_file, get_sounds
 from src.commands.utils import send_message
 
 VOICE_STATE_INVALID_MESSAGE = "❌ You must be in a voice channel."
@@ -34,10 +34,10 @@ async def setup_soundboard_play(interaction: Interaction, sound_name: str) -> No
 
     file_name = sound_entry["file_name"]
     
-    file_path = Path("sounds") / file_name
+    file_path = Path("cache/sounds") / file_name
 
     if not file_path.exists(): 
-        get_sound_file(file_name)
+        download_sound_file(file_name)
 
     channel = user.voice.channel
     vc = interaction.guild.voice_client
@@ -54,7 +54,7 @@ async def setup_soundboard_play(interaction: Interaction, sound_name: str) -> No
     
     # Play the sound
     try:
-        source_path = f"sounds/{file_name}"
+        source_path = file_path
         source = FFmpegPCMAudio(source_path)
         done = asyncio.Event()
         

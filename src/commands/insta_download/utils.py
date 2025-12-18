@@ -28,7 +28,7 @@ def download_insta(url: str) -> List[Path]:
     
     # Set extractor configuration
     config.set(("extractor",), "instagram", {
-        "cookies": "cookies.txt",
+        "cookies": "cache/cookies.txt",
     })
 
     try:

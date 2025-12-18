@@ -2,7 +2,7 @@ import re
 import pytest
 from unittest.mock import MagicMock, patch
 
-from src.commands.soundboard.utils import CLOUDFLARE_DATABASE_CLIENT_ERROR_MESSAGE, CLOUDFLARE_DATABASE_ERROR_MESSAGE, CLOUDFLARE_S3_CLIENT_ERROR_MESSAGE, NO_DOWNLOAD_SOUND_ERROR_MESSAGE, NO_SOUNDS_ERROR_MESSAGE, get_cloudflare_database_client, get_cloudflare_s3_client, get_sound_file, get_sounds
+from src.commands.soundboard.utils import CLOUDFLARE_DATABASE_CLIENT_ERROR_MESSAGE, CLOUDFLARE_DATABASE_ERROR_MESSAGE, CLOUDFLARE_S3_CLIENT_ERROR_MESSAGE, NO_DOWNLOAD_SOUND_ERROR_MESSAGE, NO_SOUNDS_ERROR_MESSAGE, get_cloudflare_database_client, get_cloudflare_s3_client, download_sound_file, get_sounds
 
 class TestGetSounds:
     def test_invalid_cloudflare_database_client(self):
@@ -67,5 +67,5 @@ class TestGetSounds:
             
             # Assert that send_message was called with correct arguments
             with pytest.raises(ValueError, match=re.escape(NO_DOWNLOAD_SOUND_ERROR_MESSAGE)):
-                get_sound_file(mock_file_name)
+                download_sound_file(mock_file_name)
     
