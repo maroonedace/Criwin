@@ -1,4 +1,4 @@
-from src.commands.insta_to_mp4.setup import setup_insta_to_mp4
+from src.commands.insta_download.setup import setup_insta_download
 from src.commands.yt_to_mp3.setup import setup_yt_to_mp3
 from src.commands.soundboard.setup import setup_soundboard
 from .leave.leave import setup_leave
@@ -14,12 +14,13 @@ def setup_commands(tree: app_commands.CommandTree):
     async def file(interaction: Interaction, url: str):
         await setup_yt_to_mp3(interaction, url)
         
-    @tree.command(name="insta-to-mp4", description="Convert a Instagram reel into an MP4 file.")
+    @tree.command(name="insta-download", description="Download an instagram reel or post.")
     @app_commands.describe(
-        url="Instagram reel URL",
+        url="Instagram URL",
+        is_visible="Make the download visible to others in the channel",
     )
-    async def file(interaction: Interaction, url: str):
-        await setup_insta_to_mp4(interaction, url)
+    async def file(interaction: Interaction, url: str, is_visible: bool = False):
+        await setup_insta_download(interaction, url, is_visible)
     
     setup_soundboard(tree)
 
