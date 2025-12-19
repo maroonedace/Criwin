@@ -1,7 +1,7 @@
 from src.commands.instagram import setup_instagram_commands
 from src.commands.leave import setup_leave
+from src.commands.soundboard import setup_soundboard
 from src.commands.youtube import setup_youtube_commands
-from src.commands.soundboard.setup import setup_soundboard
 from discord import app_commands
 
 def setup_commands(tree: app_commands.CommandTree):
