@@ -2,9 +2,8 @@ import asyncio
 from pathlib import Path
 from typing import Optional
 from discord import Interaction, File
-from src.commands.instagram.utils import (
-    download_insta,
-    is_url_valid,
+from src.commands.download_image.utils import (
+    download_image,
 )
 from src.commands.utils import send_message
 
@@ -12,13 +11,9 @@ from src.commands.utils import send_message
 active_downloads: set[int] = set()
 
 # Configuration constants
-MAX_VIDEO_LENGTH = 5 * 60  # 5 minutes in seconds
 LIMIT_DOWNLOAD_MESSAGE = "⚠️ You already have a download in progress."
-INVALID_URL_STRUCTURE_MESSAGE = (
-    "⚠️ Invalid URL structure: Only reel or post links are accepted."
-)
 
-async def setup_insta_download(interaction: Interaction, url: str, is_visible: bool) -> None:
+async def setup_download_image_command(interaction: Interaction, url: str, is_visible: bool) -> None:
     # Acknowledge the interaction and defer response
     await interaction.response.defer(ephemeral=True)
 
@@ -30,13 +25,6 @@ async def setup_insta_download(interaction: Interaction, url: str, is_visible: b
         await send_message(interaction, LIMIT_DOWNLOAD_MESSAGE)
         return
 
-    # Validate URL structure
-    is_valid = is_url_valid(url)
-
-    if not is_valid:
-        await send_message(interaction, INVALID_URL_STRUCTURE_MESSAGE)
-        return
-
     # Add user to active downloads tracking
     active_downloads.add(user_id)
 
@@ -45,7 +33,7 @@ async def setup_insta_download(interaction: Interaction, url: str, is_visible: b
 
     try:
         file_path = await asyncio.to_thread(
-            download_insta,
+            download_image,
             url,
         )
         
