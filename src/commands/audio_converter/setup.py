@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 from discord import Interaction, File
 from src.commands.utils import send_message
-from src.commands.youtube.utils import download_clip, is_url_valid
+from src.commands.audio_converter.utils import download_audio_file
 
 # Global set to track active downloads per user
 active_downloads: set[int] = set()
@@ -11,9 +11,8 @@ active_downloads: set[int] = set()
 # Configuration constants
 MAX_VIDEO_LENGTH = 5 * 60  # 5 minutes in seconds
 LIMIT_DOWNLOAD_MESSAGE = '⚠️ You already have a download in progress.'
-INVALID_URL_STRUCTURE_MESSAGE = '⚠️ Invalid URL structure: Only short or video share links are accepted.'
 
-async def setup_yt_to_mp3(interaction: Interaction, url: str) -> None:
+async def setup_audio_converter_command(interaction: Interaction, url: str) -> None:
     # Acknowledge the interaction and defer response
     await interaction.response.defer(ephemeral=True)
 
@@ -24,11 +23,6 @@ async def setup_yt_to_mp3(interaction: Interaction, url: str) -> None:
     if user_id in active_downloads:
         await send_message(interaction, LIMIT_DOWNLOAD_MESSAGE)
         return
-    
-    # Validate URL structure - must match YouTube share URL patterns
-    if not (is_url_valid(url)):
-        await send_message(interaction, INVALID_URL_STRUCTURE_MESSAGE)
-        return
 
     # Add user to active downloads tracking
     active_downloads.add(user_id)
@@ -38,7 +32,7 @@ async def setup_yt_to_mp3(interaction: Interaction, url: str) -> None:
 
     try:
         file_path = await asyncio.to_thread(
-            download_clip, 
+            download_audio_file, 
             url, 
         )
         

@@ -1,8 +1,13 @@
 import re
 import pytest
 from unittest.mock import MagicMock, patch
+from src.commands.soundboard.utils import (
+    get_sounds, 
+    download_sound_file,
+    ClientFactory,
+    ErrorMessages,
+)
 
-from src.commands.soundboard.utils import CLOUDFLARE_DATABASE_CLIENT_ERROR_MESSAGE, CLOUDFLARE_DATABASE_ERROR_MESSAGE, CLOUDFLARE_S3_CLIENT_ERROR_MESSAGE, NO_DOWNLOAD_SOUND_ERROR_MESSAGE, NO_SOUNDS_ERROR_MESSAGE, get_cloudflare_database_client, get_cloudflare_s3_client, download_sound_file, get_sounds
 
 class TestGetSounds:
     def test_invalid_cloudflare_database_client(self):
@@ -11,8 +16,8 @@ class TestGetSounds:
             mock_cloudflare.side_effect = Exception("Cloudflare Database API token invalid")
             
             # Assert that send_message was called with correct arguments
-            with pytest.raises(ValueError, match=re.escape(CLOUDFLARE_DATABASE_CLIENT_ERROR_MESSAGE)):
-                get_cloudflare_database_client()
+            with pytest.raises(ValueError, match=re.escape(ErrorMessages.CLOUDFLARE_DATABASE_CLIENT_ERROR_MESSAGE)):
+                ClientFactory.get_cloudflare_database_client()
     
     def test_invalid_cloudflare_s3_client(self):
         with patch('src.commands.soundboard.utils.boto3') as mock_boto3:
@@ -22,8 +27,8 @@ class TestGetSounds:
             mock_boto3.client.side_effect = Exception("Cloudflare S3 API token invalid")
             
             # Assert that send_message was called with correct arguments
-            with pytest.raises(ValueError, match=re.escape(CLOUDFLARE_S3_CLIENT_ERROR_MESSAGE)):
-                get_cloudflare_s3_client()
+            with pytest.raises(ValueError, match=re.escape(ErrorMessages.CLOUDFLARE_S3_CLIENT_ERROR_MESSAGE)):
+                ClientFactory.get_cloudflare_s3_client()
     
 
     def test_invalid_cloudflare_database_query(self):
@@ -34,7 +39,7 @@ class TestGetSounds:
             mock_client_instance.d1.database.query.side_effect = Exception("Database query failed")
             
             # Assert that send_message was called with correct arguments
-            with pytest.raises(ValueError, match=re.escape(CLOUDFLARE_DATABASE_ERROR_MESSAGE)):
+            with pytest.raises(ValueError, match=re.escape(ErrorMessages.CLOUDFLARE_DATABASE_ERROR_MESSAGE)):
                 get_sounds()
     
     def test_empty_cloudflare_database(self):
@@ -52,7 +57,7 @@ class TestGetSounds:
             mock_client_instance.d1.database.query.return_value = mock_response
             
             # Assert that send_message was called with correct arguments
-            with pytest.raises(ValueError, match=re.escape(NO_SOUNDS_ERROR_MESSAGE)):
+            with pytest.raises(ValueError, match=re.escape(ErrorMessages.NO_SOUNDS_ERROR_MESSAGE)):
                 get_sounds()
 
 
@@ -66,6 +71,6 @@ class TestGetSounds:
             mock_boto3_instance.download_file.side_effect = Exception("Database query failed")
             
             # Assert that send_message was called with correct arguments
-            with pytest.raises(ValueError, match=re.escape(NO_DOWNLOAD_SOUND_ERROR_MESSAGE)):
+            with pytest.raises(ValueError, match=re.escape(ErrorMessages.NO_DOWNLOAD_SOUND_ERROR_MESSAGE)):
                 download_sound_file(mock_file_name)
     

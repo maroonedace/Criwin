@@ -1,23 +1,6 @@
 import os
 from pathlib import Path
 from yt_dlp import YoutubeDL
-import re
-
-# Regular expressions for URL validation
-YOUTUBE_RE = re.compile(
-    r'^https?://(?:www\.|m\.)?youtube\.com/watch\?v=[A-Za-z0-9_-]{11}(?:[&#?][^#\s]*)*$', 
-    re.I
-)
-
-YOUTUBE_SHORT_RE = re.compile(
-    r'^https?://(?:www\.|m\.)?youtube\.com/shorts/[A-Za-z0-9_-]{11}(?:[&#?][^#\s]*)*$', 
-    re.I
-)
-
-YOUTUBE_SHORTENED_RE = re.compile(
-    r'^https?://youtu\.be/[A-Za-z0-9_-]{11}(?:[&#?][^#\s]*)*$', 
-    re.I
-)
 
 # Download Directory
 DOWNLOAD_DIR = str(Path.home() / "Downloads")
@@ -42,16 +25,43 @@ YTDL_BASE = {
 }
 
 # Configuration constants
-MAX_VIDEO_LENGTH = 5 * 60  # 5 minutes in seconds
-LONG_DURATION_MESSAGE = '⚠️ Video is too long (maximum 5 minutes).'
+MAX_VIDEO_LENGTH = 4 * 60  # 4 minutes in seconds
+NOT_VIDEO_MESSAGE = '⚠️ This is not a video.'
+PLAYLIST_MESSAGE = '⚠️ This is a playlist.'
+LIVE_STREAM_MESSAGE = '⚠️ This is a live stream.'
+LONG_DURATION_MESSAGE = f'⚠️ Video is too long (maximum {MAX_VIDEO_LENGTH / 60} minutes).'
 URL_INVALID_MESSAGE = '⚠️ Invalid Youtube URL.'
 
 
-def download_clip(url: str) -> Path:
+def download_audio_file(url: str) -> Path:
     try:
         # Extract video metadata
         ydl = YoutubeDL(YTDL_META)
         video_info = ydl.extract_info(url, download=False)
+        
+        # Check 1: Ensure it's not a playlist
+        if video_info.get("_type") == "playlist":
+            raise ValueError(PLAYLIST_MESSAGE)
+        
+        
+        # Check 2: Ensure it's not a live stream
+        is_live = video_info.get("is_live", False)
+        was_live = video_info.get("was_live", False)
+        if is_live or was_live:
+            raise ValueError(LIVE_STREAM_MESSAGE)
+        
+        # Multiple checks to confirm it's a video
+        checks = [
+            video_info.get("duration") is not None,  # Videos typically have duration
+            video_info.get("width") is not None,     # Videos have width
+            video_info.get("height") is not None,    # Videos have height
+            len(video_info.get("formats", [])) > 0,  # Videos have formats
+        ]
+        
+        is_video = any(checks)
+        
+        if not is_video:
+            raise ValueError(NOT_VIDEO_MESSAGE)
         
         # Extract video information
         duration = int(video_info.get("duration", 0))
@@ -76,11 +86,3 @@ def download_clip(url: str) -> Path:
         
     except Exception as error:
         raise ValueError(URL_INVALID_MESSAGE) from error
-
-
-def is_url_valid(url) -> bool:
-    return (
-        YOUTUBE_RE.match(url) or 
-        YOUTUBE_SHORT_RE.match(url) or 
-        YOUTUBE_SHORTENED_RE.match(url)
-    )

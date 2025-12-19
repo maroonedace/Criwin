@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-from bot import DiscordBot
+from src import DiscordBot
 
 # Load environment variables
 load_dotenv()
