@@ -2,18 +2,23 @@ import asyncio
 from pathlib import Path
 from typing import Optional
 from discord import Interaction, File
+from src.commands.instagram.utils import (
+    download_insta,
+    is_url_valid,
+)
 from src.commands.utils import send_message
-from src.commands.yt_to_mp3.utils import download_clip, is_url_valid
 
 # Global set to track active downloads per user
 active_downloads: set[int] = set()
 
 # Configuration constants
 MAX_VIDEO_LENGTH = 5 * 60  # 5 minutes in seconds
-LIMIT_DOWNLOAD_MESSAGE = '⚠️ You already have a download in progress.'
-INVALID_URL_STRUCTURE_MESSAGE = '⚠️ Invalid URL structure: Only short or video share links are accepted.'
+LIMIT_DOWNLOAD_MESSAGE = "⚠️ You already have a download in progress."
+INVALID_URL_STRUCTURE_MESSAGE = (
+    "⚠️ Invalid URL structure: Only reel or post links are accepted."
+)
 
-async def setup_yt_to_mp3(interaction: Interaction, url: str) -> None:
+async def setup_insta_download(interaction: Interaction, url: str, is_visible: bool) -> None:
     # Acknowledge the interaction and defer response
     await interaction.response.defer(ephemeral=True)
 
@@ -24,9 +29,11 @@ async def setup_yt_to_mp3(interaction: Interaction, url: str) -> None:
     if user_id in active_downloads:
         await send_message(interaction, LIMIT_DOWNLOAD_MESSAGE)
         return
-    
-    # Validate URL structure - must match YouTube share URL patterns
-    if not (is_url_valid(url)):
+
+    # Validate URL structure
+    is_valid = is_url_valid(url)
+
+    if not is_valid:
         await send_message(interaction, INVALID_URL_STRUCTURE_MESSAGE)
         return
 
@@ -38,22 +45,29 @@ async def setup_yt_to_mp3(interaction: Interaction, url: str) -> None:
 
     try:
         file_path = await asyncio.to_thread(
-            download_clip, 
-            url, 
+            download_insta,
+            url,
         )
         
-        # Send the MP3 file to the user
-        await interaction.followup.send(
-            file=File(str(file_path)), 
-            ephemeral=True
-        )
+        channel = interaction.channel
+
+        # Send the file to the user
+        if is_visible:
+            # Send public message to channel
+            await channel.send(files=[File(str(f)) for f in file_path])
+            # Optional: ephemeral confirmation to user
+            await interaction.followup.send("Download sent to channel!", ephemeral=True)
+        else:
+            # Send ephemeral message to user
+            await interaction.followup.send(files=[File(str(f)) for f in file_path], ephemeral=True)
+        
 
     except Exception as error:
         # Handle all download/conversion errors
         await send_message(interaction, str(error))
-        
+
     finally:
-        # Cleanup: remove temporary file and release download lock
-        if file_path is not None:
-             file_path.unlink(missing_ok=True)
+        for file in file_path:
+            if file is not None:
+                file.unlink(missing_ok=True)
         active_downloads.discard(user_id)
