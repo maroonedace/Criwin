@@ -30,7 +30,7 @@ NOT_VIDEO_MESSAGE = '⚠️ This is not a video.'
 PLAYLIST_MESSAGE = '⚠️ This is a playlist.'
 LIVE_STREAM_MESSAGE = '⚠️ This is a live stream.'
 LONG_DURATION_MESSAGE = f'⚠️ Video is too long (maximum {MAX_VIDEO_LENGTH / 60} minutes).'
-URL_INVALID_MESSAGE = '⚠️ Invalid Youtube URL.'
+URL_INVALID_MESSAGE = '⚠️ This URL is invalid or the video could not be downloaded.'
 
 
 def download_audio_file(url: str) -> Path:
