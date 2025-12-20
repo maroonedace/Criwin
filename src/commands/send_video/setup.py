@@ -1,8 +1,8 @@
 import asyncio
 from pathlib import Path
 from typing import Optional
-from discord import Interaction, File
-from src.commands.utils import is_supported_url, send_message
+from discord import Interaction, File, Member
+from src.commands.utils import send_message
 from src.commands.yt_dlp.utils import video_converter
 
 # Global set to track active downloads per user
@@ -12,13 +12,9 @@ active_downloads: set[int] = set()
 MAX_VIDEO_LENGTH = 5 * 60  # 5 minutes in seconds
 LIMIT_DOWNLOAD_MESSAGE = '⚠️ You already have a download in progress.'
 
-async def setup_audio_converter_command(interaction: Interaction, url: str) -> None:
+async def setup_send_video_command(interaction: Interaction, url: str, member: Member) -> None:
     # Acknowledge the interaction and defer response
     await interaction.response.defer(ephemeral=True)
-    
-    if not is_supported_url(url):
-        await send_message(interaction, LIMIT_DOWNLOAD_MESSAGE)
-        return
 
     # Get user ID for download tracking
     user_id = interaction.user.id
@@ -38,14 +34,11 @@ async def setup_audio_converter_command(interaction: Interaction, url: str) -> N
         file_path = await asyncio.to_thread(
             video_converter, 
             url,
-            False 
+            True 
         )
         
-        # Send the MP3 file to the user
-        await interaction.followup.send(
-            file=File(str(file_path)), 
-            ephemeral=True
-        )
+        await send_message(interaction, f"Succesfully sent to {member}")
+        await member.send(content=f" Sent by {interaction.user.global_name}", file=File(str(file_path)))
 
     except Exception as error:
         # Handle all download/conversion errors

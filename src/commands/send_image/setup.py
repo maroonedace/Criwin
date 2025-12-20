@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 from typing import Optional
-from discord import Interaction, File
+from discord import Interaction, File, Member
 from src.commands.download_image.utils import (
     download_image,
 )
@@ -13,7 +13,7 @@ active_downloads: set[int] = set()
 # Configuration constants
 LIMIT_DOWNLOAD_MESSAGE = "⚠️ You already have a download in progress."
 
-async def setup_download_image_command(interaction: Interaction, url: str, is_visible: bool) -> None:
+async def setup_send_image_command(interaction: Interaction, url: str, member: Member) -> None:
     # Acknowledge the interaction and defer response
     await interaction.response.defer(ephemeral=True)
     
@@ -41,17 +41,8 @@ async def setup_download_image_command(interaction: Interaction, url: str, is_vi
             url,
         )
         
-        channel = interaction.channel
-
-        # Send the file to the user
-        if is_visible:
-            # Send public message to channel
-            await channel.send(files=[File(str(f)) for f in file_path])
-            # Optional: ephemeral confirmation to user
-            await interaction.followup.send("Download sent to channel!", ephemeral=True)
-        else:
-            # Send ephemeral message to user
-            await interaction.followup.send(files=[File(str(f)) for f in file_path], ephemeral=True)
+        await send_message(interaction, f"Succesfully sent to {member}")
+        await member.send(content=f" Sent by {interaction.user.global_name}", files=[File(str(f)) for f in file_path])
         
 
     except Exception as error:

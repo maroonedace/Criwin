@@ -2,6 +2,7 @@ from discord import app_commands, Interaction
 
 from src.commands.audio_converter.setup import setup_audio_converter_command
 
+
 def setup_audio_converter(tree: app_commands.CommandTree):
     """Setup YouTube related commands"""
     
