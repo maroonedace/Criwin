@@ -1,9 +1,14 @@
 import os
 from pathlib import Path
+import re
 from yt_dlp import YoutubeDL
+from typing import List
+from gallery_dl import config, job
+from PIL import Image
+import mimetypes
 
 from src.commands.constants import DOWNLOAD_DIR
-from src.commands.utils import is_supported_url
+from src.commands.download.constants import MAX_AUDIO_LENGTH, MAX_VIDEO_LENGTH, SUPPORTED_DOMAINS
 
 # yt-dlp configuration
 YTDL_META = {
@@ -31,19 +36,24 @@ YTDL_VIDEO = {
     "noplaylist": True,
 }
 
-# Configuration constants
-MAX_AUDIO_DURATION = 4 * 60
-MAX_VIDEO_DURATION = 30
+# Configuration messages
 NOT_VIDEO_MESSAGE = '⚠️ This is not a video.'
 PLAYLIST_MESSAGE = '⚠️ This is a playlist.'
 LIVE_STREAM_MESSAGE = '⚠️ This is a live stream.'
-LONG_AUDIO_MESSAGE = f'⚠️ Audio video is too long (maximum {MAX_AUDIO_DURATION / 60} minutes).'
-LONG_VIDEO_MESSAGE = f'⚠️ Video is too long for video download (maximum {MAX_VIDEO_DURATION} seconds).'
+LONG_AUDIO_MESSAGE = f'⚠️ Audio video is too long (maximum {MAX_VIDEO_LENGTH / 60} minutes).'
+LONG_VIDEO_MESSAGE = f'⚠️ Video is too long for video download (maximum {MAX_AUDIO_LENGTH} seconds).'
 URL_INVALID_MESSAGE = '⚠️ This URL is invalid or the video could not be downloaded.'
 UNSUPPORTED_URL_MESSAGE = '⚠️ This URL is not from a supported platform.'
 
+def is_supported_url(url: str) -> bool:
+    """Check if the URL is from a supported domain."""
+    return any(domain in url for domain in SUPPORTED_DOMAINS)
 
-def video_converter(url: str, is_video_download: bool) -> Path:
+def is_instagram_reel(url: str) -> bool: 
+    reel_pattern = r'https?://(?:www\.)?instagram\.com/reel/[^/\s]+/?'
+    return bool(re.match(reel_pattern, url))
+
+def video_downloader(url: str, is_video_download: bool) -> Path:
     if not is_supported_url(url):
         raise ValueError(UNSUPPORTED_URL_MESSAGE)
     
@@ -62,7 +72,7 @@ def video_converter(url: str, is_video_download: bool) -> Path:
         
         if is_video_download:
             # Check video duration limit
-            if duration > MAX_VIDEO_DURATION:
+            if duration > MAX_VIDEO_LENGTH:
                 raise ValueError(LONG_VIDEO_MESSAGE)    
             
             # Download video
@@ -73,7 +83,7 @@ def video_converter(url: str, is_video_download: bool) -> Path:
 
         else:
             # Check audio duration limit
-            if duration > MAX_AUDIO_DURATION:
+            if duration > MAX_AUDIO_LENGTH:
                 raise ValueError(LONG_AUDIO_MESSAGE)    
             
             # Download audio
@@ -89,3 +99,50 @@ def video_converter(url: str, is_video_download: bool) -> Path:
         
     except Exception as error:
         raise ValueError(URL_INVALID_MESSAGE) from error
+    
+def convert_to_png(file_path: Path) -> Path:
+    try:
+        # Open the image
+        with Image.open(file_path) as img:
+            png_path = file_path.with_suffix('.png')
+            img.save(png_path, 'PNG')
+            return png_path
+        
+    except Exception as e:
+        print(f"Failed to convert {file_path} to PNG: {e}")
+        return None
+
+def gallery_downloader(url: str) -> List[Path]:
+    download_path = Path("downloads").resolve()
+    download_path.mkdir(parents=True, exist_ok=True)
+
+    # Load existing configuration
+    config.load()
+
+    # Set base directory
+    config.set((), "base-directory", str(download_path))
+    
+    # Set extractor configuration
+    config.set(("extractor",), "instagram", {
+        "cookies": "cache/cookies.txt",
+    })
+
+    try:
+        download_job = job.DownloadJob(url)
+        download_job.run()
+    except Exception as error:
+        raise ValueError(f"Failed to download {url}", error)
+
+    downloaded_files = [f for f in download_path.rglob("*") if f.is_file()]
+    
+    # Convert images to PNG
+    converted_files = []
+    for file_path in downloaded_files:
+        png_path = convert_to_png(file_path)
+        if png_path:
+            converted_files.append(png_path)
+            file_path.unlink()
+        else:
+            converted_files.append(file_path)
+    
+    return converted_files[::-1]

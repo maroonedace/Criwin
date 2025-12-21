@@ -2,23 +2,16 @@ import asyncio
 from pathlib import Path
 from typing import Optional
 from discord import Interaction, File, Member
-from src.commands.download_image.utils import (
-    download_image,
-)
-from src.commands.utils import is_supported_url, send_message
+from src.commands.download.constants import UNSUPPORTED_DOMAIN_MESSAGE, LIMIT_DOWNLOAD_MESSAGE
+from src.commands.download.utils import video_downloader, is_supported_url
+from src.commands.utils import send_message
 
-# Global set to track active downloads per user
-active_downloads: set[int] = set()
-
-# Configuration constants
-LIMIT_DOWNLOAD_MESSAGE = "⚠️ You already have a download in progress."
-
-async def setup_send_image_command(interaction: Interaction, url: str, member: Member) -> None:
+async def setup_send_video(interaction: Interaction, active_downloads: set[int], url: str, member: Member) -> None:
     # Acknowledge the interaction and defer response
     await interaction.response.defer(ephemeral=True)
     
     if not is_supported_url(url):
-        await send_message(interaction, LIMIT_DOWNLOAD_MESSAGE)
+        await send_message(interaction, UNSUPPORTED_DOMAIN_MESSAGE)
         return
 
     # Get user ID for download tracking
@@ -37,20 +30,18 @@ async def setup_send_image_command(interaction: Interaction, url: str, member: M
 
     try:
         file_path = await asyncio.to_thread(
-            download_image,
+            video_downloader, 
             url,
+            True 
         )
         
         await send_message(interaction, f"Succesfully sent to {member}")
-        await member.send(content=f" Sent by {interaction.user.global_name}", files=[File(str(f)) for f in file_path])
-        
+        await member.send(content=f" Sent by {interaction.user.display_name}", file=File(str(file_path)))
 
     except Exception as error:
-        # Handle all download/conversion errors
         await send_message(interaction, str(error))
-
+        
     finally:
-        for file in file_path:
-            if file is not None:
-                file.unlink(missing_ok=True)
+        if file_path is not None:
+             file_path.unlink(missing_ok=True)
         active_downloads.discard(user_id)

@@ -2,23 +2,16 @@ import asyncio
 from pathlib import Path
 from typing import Optional
 from discord import Interaction, File
-from src.commands.download_image.utils import (
-    download_image,
-)
-from src.commands.utils import is_supported_url, send_message
+from src.commands.download.constants import DOWNLOAD_SENT_TO_CHANNEL_MESSAGE, UNSUPPORTED_DOMAIN_MESSAGE, LIMIT_DOWNLOAD_MESSAGE
+from src.commands.download.utils import is_supported_url, video_downloader
+from src.commands.utils import send_message
 
-# Global set to track active downloads per user
-active_downloads: set[int] = set()
-
-# Configuration constants
-LIMIT_DOWNLOAD_MESSAGE = "⚠️ You already have a download in progress."
-
-async def setup_download_image_command(interaction: Interaction, url: str, is_visible: bool) -> None:
+async def setup_download_audio(interaction: Interaction, active_downloads: set[int], url: str, is_visible: bool) -> None:
     # Acknowledge the interaction and defer response
     await interaction.response.defer(ephemeral=True)
     
     if not is_supported_url(url):
-        await send_message(interaction, LIMIT_DOWNLOAD_MESSAGE)
+        await send_message(interaction, UNSUPPORTED_DOMAIN_MESSAGE)
         return
 
     # Get user ID for download tracking
@@ -37,29 +30,25 @@ async def setup_download_image_command(interaction: Interaction, url: str, is_vi
 
     try:
         file_path = await asyncio.to_thread(
-            download_image,
+            video_downloader, 
             url,
+            False 
         )
         
         channel = interaction.channel
-
-        # Send the file to the user
+        
         if is_visible:
             # Send public message to channel
-            await channel.send(files=[File(str(f)) for f in file_path])
-            # Optional: ephemeral confirmation to user
-            await interaction.followup.send("Download sent to channel!", ephemeral=True)
+            await channel.send(file=File(str(file_path)))
+            await interaction.followup.send(DOWNLOAD_SENT_TO_CHANNEL_MESSAGE, ephemeral=True)
         else:
             # Send ephemeral message to user
-            await interaction.followup.send(files=[File(str(f)) for f in file_path], ephemeral=True)
-        
+            await interaction.followup.send(file=File(str(file_path)), ephemeral=True)
 
     except Exception as error:
-        # Handle all download/conversion errors
         await send_message(interaction, str(error))
-
+        
     finally:
-        for file in file_path:
-            if file is not None:
-                file.unlink(missing_ok=True)
+        if file_path is not None:
+             file_path.unlink(missing_ok=True)
         active_downloads.discard(user_id)
