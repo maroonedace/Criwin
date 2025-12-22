@@ -5,10 +5,9 @@ from yt_dlp import YoutubeDL
 from typing import List
 from gallery_dl import config, job
 from PIL import Image
-import mimetypes
 
 from src.commands.constants import DOWNLOAD_DIR
-from src.commands.download.constants import MAX_AUDIO_LENGTH, MAX_VIDEO_LENGTH, SUPPORTED_DOMAINS
+from src.commands.download.constants import SUPPORTED_DOMAINS
 
 # yt-dlp configuration
 YTDL_META = {
@@ -40,10 +39,13 @@ YTDL_VIDEO = {
 NOT_VIDEO_MESSAGE = '⚠️ This is not a video.'
 PLAYLIST_MESSAGE = '⚠️ This is a playlist.'
 LIVE_STREAM_MESSAGE = '⚠️ This is a live stream.'
-LONG_AUDIO_MESSAGE = f'⚠️ Audio video is too long (maximum {MAX_VIDEO_LENGTH / 60} minutes).'
-LONG_VIDEO_MESSAGE = f'⚠️ Video is too long for video download (maximum {MAX_AUDIO_LENGTH} seconds).'
 URL_INVALID_MESSAGE = '⚠️ This URL is invalid or the video could not be downloaded.'
 UNSUPPORTED_URL_MESSAGE = '⚠️ This URL is not from a supported platform.'
+
+def is_file_too_large(file_path: str, max_size_mb: int):
+    file_size_bytes = os.path.getsize(file_path)
+    file_size_mb = file_size_bytes / (1024 * 1024)
+    return file_size_mb > max_size_mb
 
 def is_supported_url(url: str) -> bool:
     """Check if the URL is from a supported domain."""
@@ -68,30 +70,20 @@ def video_downloader(url: str, is_video_download: bool) -> Path:
         if is_live or was_live:
             raise ValueError(LIVE_STREAM_MESSAGE)
         
-        duration = int(video_info.get("duration", 0))
-        
         if is_video_download:
-            # Check video duration limit
-            if duration > MAX_VIDEO_LENGTH:
-                raise ValueError(LONG_VIDEO_MESSAGE)    
-            
             # Download video
             ydl = YoutubeDL(YTDL_VIDEO)
-            info = ydl.extract_info(url, download=True)
-            downloaded_file_path = ydl.prepare_filename(info)
-            return Path(downloaded_file_path)
+            video_info = ydl.extract_info(url, download=True)
+            file_name = ydl.prepare_filename(video_info)
+            return Path(file_name)
 
         else:
-            # Check audio duration limit
-            if duration > MAX_AUDIO_LENGTH:
-                raise ValueError(LONG_AUDIO_MESSAGE)    
-            
             # Download audio
             ydl = YoutubeDL(YTDL_AUDIO)
-            info = ydl.extract_info(url, download=True)
-            downloaded_file_path = ydl.prepare_filename(info)
-            base_name = os.path.splitext(downloaded_file_path)[0]
-            return Path(f"{base_name}.mp3")
+            audio_info = ydl.extract_info(url, download=True)
+            file_name = ydl.prepare_filename(audio_info)
+            base_name = f"{os.path.splitext(file_name)[0]}.mp3"
+            return Path(base_name)
     
     except ValueError:
         # Re-raise validation errors (like duration limits)
@@ -104,7 +96,8 @@ def convert_to_png(file_path: Path) -> Path:
     try:
         # Open the image
         with Image.open(file_path) as img:
-            png_path = file_path.with_suffix('.png')
+            stem = file_path.stem.rstrip('.')
+            png_path = file_path.parent / f"{stem}.png"
             img.save(png_path, 'PNG')
             return png_path
         

@@ -2,8 +2,8 @@ import asyncio
 from pathlib import Path
 from typing import Optional
 from discord import Interaction, File
-from src.commands.download.constants import DOWNLOAD_SENT_TO_CHANNEL_MESSAGE, UNSUPPORTED_DOMAIN_MESSAGE, LIMIT_DOWNLOAD_MESSAGE
-from src.commands.download.utils import is_supported_url, video_downloader
+from src.commands.download.constants import BOOST_LEVEL_UPLOAD_SIZE, DOWNLOAD_SENT_TO_CHANNEL_MESSAGE, LARGE_FILE_MESSAGE, UNSUPPORTED_DOMAIN_MESSAGE, LIMIT_DOWNLOAD_MESSAGE
+from src.commands.download.utils import is_file_too_large, is_supported_url, video_downloader
 from src.commands.utils import send_message
 
 async def setup_download_audio(interaction: Interaction, active_downloads: set[int], url: str, is_visible: bool) -> None:
@@ -34,6 +34,12 @@ async def setup_download_audio(interaction: Interaction, active_downloads: set[i
             url,
             False 
         )
+        
+        max_size_mb = BOOST_LEVEL_UPLOAD_SIZE.get(interaction.guild.premium_tier, 10)
+        is_file_large = is_file_too_large(str(file_path), max_size_mb)
+        
+        if is_file_large:
+            raise ValueError(LARGE_FILE_MESSAGE)
         
         channel = interaction.channel
         

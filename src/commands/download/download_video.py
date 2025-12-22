@@ -2,8 +2,8 @@ import asyncio
 from pathlib import Path
 from typing import Optional
 from discord import Interaction, File
-from src.commands.download.constants import DOWNLOAD_SENT_TO_CHANNEL_MESSAGE, UNSUPPORTED_DOMAIN_MESSAGE, LIMIT_DOWNLOAD_MESSAGE
-from src.commands.download.utils import gallery_downloader, is_instagram_reel, video_downloader, is_supported_url
+from src.commands.download.constants import BOOST_LEVEL_UPLOAD_SIZE, DOWNLOAD_SENT_TO_CHANNEL_MESSAGE, LARGE_FILE_MESSAGE, UNSUPPORTED_DOMAIN_MESSAGE, LIMIT_DOWNLOAD_MESSAGE
+from src.commands.download.utils import is_file_too_large, gallery_downloader, is_instagram_reel, video_downloader, is_supported_url
 from src.commands.utils import send_message
 
 async def setup_download_video(interaction: Interaction, active_downloads: set[int], url: str, is_visible: bool) -> None:
@@ -28,14 +28,17 @@ async def setup_download_video(interaction: Interaction, active_downloads: set[i
     # Initialize file_path for cleanup
     file_path: Optional[Path] = None
     
-    
-
     try:
-        
         if is_instagram_reel(url):
             file_path = await asyncio.to_thread(gallery_downloader, url)
         else:
             file_path = await asyncio.to_thread(video_downloader, url, True)
+        
+        max_size_mb = BOOST_LEVEL_UPLOAD_SIZE.get(interaction.guild.premium_tier, 10)
+        is_file_large = is_file_too_large(str(file_path), max_size_mb)
+        
+        if is_file_large:
+            raise ValueError(LARGE_FILE_MESSAGE)
         
         channel = interaction.channel
         
