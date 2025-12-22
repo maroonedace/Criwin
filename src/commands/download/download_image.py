@@ -48,8 +48,8 @@ async def setup_download_image(interaction: Interaction, active_downloads: set[i
         await send_message(interaction, str(error))
         
     finally:
+        active_downloads.discard(user_id)
         if file_path:
             for file in file_path:
                 if file is not None:
                     file.unlink(missing_ok=True)
-        active_downloads.discard(user_id)

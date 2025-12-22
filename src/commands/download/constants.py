@@ -10,6 +10,8 @@ SUPPORTED_DOMAINS = [
     "vm.tiktok.com",
 ]
 
+VIDEO_EXTENSIONS = {'.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.m4v', '.3gp'}
+
 DOWNLOAD_SENT_TO_CHANNEL_MESSAGE = 'Download sent to channel!'
 UNSUPPORTED_DOMAIN_MESSAGE = '⚠️ This is not one of the supported domains.'
 LIMIT_DOWNLOAD_MESSAGE = '⚠️ You already have a download in progress.'
