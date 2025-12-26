@@ -12,10 +12,14 @@ cache
 .venv/
 
 # Environment variables
-.env
+.env.dev
+.env.prod
 
 # Sounds
 sounds
 
 # VS Code
 .vscode/
+
+# Cookies
+cookies.txt

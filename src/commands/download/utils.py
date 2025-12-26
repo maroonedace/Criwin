@@ -19,7 +19,7 @@ YTDL_AUDIO = {
         {
             "key": "FFmpegExtractAudio",
             "preferredcodec": "mp3",
-            "preferredquality": "320",
+            "preferredquality": "128",
         }
     ],
     "quiet": True,
