@@ -124,7 +124,7 @@ def gallery_downloader(url: str) -> Union[List[Path], Path]:
         ("extractor",),
         "instagram",
         {
-            "cookies": "cache/cookies.txt",
+            "cookies": "cookies.txt",
         },
     )
 
