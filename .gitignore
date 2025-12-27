@@ -12,7 +12,7 @@ cache
 .venv/
 
 # Environment variables
-.env.dev
+.env
 .env.prod
 
 # Sounds

@@ -27,7 +27,8 @@ YTDL_AUDIO = {
 }
 
 YTDL_VIDEO = {
-    "format": "best[height<=480][ext=mp4]/best[height<=480]/best",
+    "format": "best[height<=480]/bestvideo[height<=480]+bestaudio/best",
+    "merge_output_format": "mp4",
     "outtmpl": os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s"),
     "quiet": True,
     "noplaylist": True,
@@ -142,8 +143,13 @@ def gallery_downloader(url: str) -> Union[List[Path], Path]:
     # Convert images to PNG
     converted_files = []
     for file_path in downloaded_files:
-        # Convert non-video files to PNG
+        # Skip conversion if already PNG
+        if file_path.suffix.lower() == ".png":
+            converted_files.append(file_path)
+            continue
+        
         png_path = convert_to_png(file_path)
+        
         if png_path:
             converted_files.append(png_path)
             file_path.unlink()
