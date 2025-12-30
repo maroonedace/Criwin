@@ -8,7 +8,6 @@ WORKDIR /criwin
 COPY src/ ./src/
 COPY main.py .
 COPY cookies.txt .
-COPY .env.prod .env
 
 # Install OS libraries
 RUN apt-get -y update
