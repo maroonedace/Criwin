@@ -9,7 +9,6 @@ from discord import app_commands
 import discord
 from dotenv import load_dotenv
 
-
 class Sounds:
     name: str
     file_name: str
