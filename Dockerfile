@@ -7,7 +7,6 @@ WORKDIR /criwin
 # Copy the rest of the code
 COPY src/ ./src/
 COPY main.py .
-COPY cookies.txt .
 
 # Install OS libraries
 RUN apt-get -y update
