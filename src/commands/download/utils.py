@@ -27,11 +27,22 @@ YTDL_AUDIO = {
 }
 
 YTDL_VIDEO = {
-    "format": "best[height<=480]/bestvideo[height<=480]+bestaudio/best",
+    "format": "(bestvideo[vcodec^=avc1][height<=480]+bestaudio[acodec^=mp4a])/best[vcodec^=avc1][height<=480]/best",
     "merge_output_format": "mp4",
     "outtmpl": os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s"),
     "quiet": True,
     "noplaylist": True,
+    "postprocessors": [{
+        "key": "FFmpegVideoConvertor",
+        "preferedformat": "mp4",
+    }],
+    "writethumbnail": False,
+    "embedmetadata": True,
+}
+
+YTDL_VIDEO_WITH_COOKIES = {
+    **YTDL_VIDEO,
+    "cookiefile": "./cookies.txt",
 }
 
 # Configuration messages
@@ -75,7 +86,7 @@ def video_downloader(url: str, is_video_download: bool) -> Path:
 
         if is_video_download:
             # Download video
-            ydl = YoutubeDL(YTDL_VIDEO)
+            ydl = YoutubeDL(YTDL_VIDEO_WITH_COOKIES)
             video_info = ydl.extract_info(url, download=True)
             file_name = ydl.prepare_filename(video_info)
             return Path(file_name)

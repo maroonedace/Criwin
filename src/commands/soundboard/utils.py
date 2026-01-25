@@ -3,8 +3,9 @@ import os
 from pathlib import Path
 import time
 from typing import Any, Dict, List
-import boto3
-from cloudflare import Cloudflare
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from minio import Minio
 from discord import app_commands
 import discord
 from dotenv import load_dotenv
@@ -18,7 +19,6 @@ class Sounds:
 # Setting up to load ENV values
 load_dotenv()
 
-
 class Config:
     # Cache configuration
     CACHE_DIR = Path("cache")
@@ -26,18 +26,19 @@ class Config:
     CACHE_TIMESTAMP_FILE = CACHE_DIR / "sounds_cache_timestamp.txt"
     CACHE_EXPIRY_SECONDS = 300  # 5 minutes
 
-    # Cloudflare Database
-    CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN")
-    CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID")
-    CLOUDFLARE_DATABASE_ID = os.getenv("CLOUDFLARE_DATABASE_ID")
-    CLOUDFLARE_TABLE_NAME = os.getenv("CLOUDFLARE_TABLE_NAME")
+    # PostgreSQL Database
+    POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
+    POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
+    POSTGRES_DB = os.getenv("POSTGRES_DB", "discord_bot")
+    POSTGRES_USER = os.getenv("POSTGRES_USER", "discord_bot")
+    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
-    # Cloudflare S3
-    CLOUDFLARE_ENDPOINT_URL = os.getenv("CLOUDFLARE_ENDPOINT_URL")
-    CLOUDFLARE_ACCESS_KEY_ID = os.getenv("CLOUDFLARE_ACCESS_KEY_ID")
-    CLOUDFLARE_SECRET_ACCESS_KEY = os.getenv("CLOUDFLARE_SECRET_ACCESS_KEY")
-    CLOUDFLARE_BUCKET_NAME = os.getenv("CLOUDFLARE_BUCKET_NAME")
-    CLOUDFLARE_REGION_NAME = os.getenv("CLOUDFLARE_REGION_NAME")
+    # MinIO S3
+    MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
+    MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+    MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
+    MINIO_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME", "soundboard")
+    MINIO_USE_SSL = os.getenv("MINIO_USE_SSL", "false").lower() == "true"
 
     # Soundboard directory
     SOUNDBOARD_DIR = "soundboard"
@@ -112,54 +113,63 @@ class SoundCache:
 
 
 class ClientFactory:
-    @staticmethod
-    def get_database_client() -> Cloudflare:
-        """Get Cloudflare database client"""
-        try:
-            return Cloudflare(api_token=Config.CLOUDFLARE_API_TOKEN)
-        except Exception:
-            raise ValueError(ErrorMessages.DATABASE_CLIENT)
+    _db_connection = None  # Connection pooling
+    _minio_client = None
 
     @staticmethod
-    def get_s3_client():
-        """Get Cloudflare S3 client"""
-        try:
-            return boto3.client(
-                service_name="s3",
-                endpoint_url=Config.CLOUDFLARE_ENDPOINT_URL,
-                aws_access_key_id=Config.CLOUDFLARE_ACCESS_KEY_ID,
-                aws_secret_access_key=Config.CLOUDFLARE_SECRET_ACCESS_KEY,
-                region_name=Config.CLOUDFLARE_REGION_NAME,
-            )
-        except Exception:
-            raise ValueError(ErrorMessages.S3_CLIENT)
+    def get_database_connection():
+        """Get PostgreSQL database connection with connection pooling"""
+        if ClientFactory._db_connection is None or ClientFactory._db_connection.closed:
+            try:
+                ClientFactory._db_connection = psycopg2.connect(
+                    host=Config.POSTGRES_HOST,
+                    port=Config.POSTGRES_PORT,
+                    database=Config.POSTGRES_DB,
+                    user=Config.POSTGRES_USER,
+                    password=Config.POSTGRES_PASSWORD,
+                    connect_timeout=10
+                )
+            except Exception as e:
+                raise ValueError(f"{ErrorMessages.DATABASE_CLIENT}: {str(e)}")
+        return ClientFactory._db_connection
+
+    @staticmethod
+    def get_minio_client() -> Minio:
+        """Get MinIO client"""
+        if ClientFactory._minio_client is None:
+            try:
+                ClientFactory._minio_client = Minio(
+                    Config.MINIO_ENDPOINT,
+                    access_key=Config.MINIO_ACCESS_KEY,
+                    secret_key=Config.MINIO_SECRET_KEY,
+                    secure=Config.MINIO_USE_SSL
+                )
+                
+                # Ensure bucket exists
+                if not ClientFactory._minio_client.bucket_exists(Config.MINIO_BUCKET_NAME):
+                    ClientFactory._minio_client.make_bucket(Config.MINIO_BUCKET_NAME)
+                    
+            except Exception as e:
+                raise ValueError(f"{ErrorMessages.S3_CLIENT}: {str(e)}")
+        return ClientFactory._minio_client
 
 
 class DatabaseOperations:
     @staticmethod
     def get_all_sounds() -> List[Dict[str, Any]]:
         """Get all sounds from database"""
-        if SoundCache.is_valid():
-            cached_data = SoundCache.load()
-            if cached_data:
-                return cached_data
 
-        client = ClientFactory.get_database_client()
+        conn = ClientFactory.get_database_connection()
         try:
-            query = f"SELECT * FROM {Config.CLOUDFLARE_TABLE_NAME};"
-            response = client.d1.database.query(
-                database_id=Config.CLOUDFLARE_DATABASE_ID,
-                account_id=Config.CLOUDFLARE_ACCOUNT_ID,
-                sql=query,
-            )
-        except Exception:
-            raise ValueError(ErrorMessages.DATABASE)
-
-        sound_items = response.result[0].results
-
-        if not sound_items:
-            SoundCache.save([])
-            raise ValueError(ErrorMessages.NO_SOUNDS)
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute("SELECT name, file_name FROM sounds ORDER BY name;")
+                sound_items = cursor.fetchall()
+                
+                # Convert to list of dicts
+                sound_items = [dict(row) for row in sound_items]
+        except Exception as e:
+            conn.rollback()
+            raise ValueError(f"{ErrorMessages.DATABASE}: {str(e)}")
 
         SoundCache.save(sound_items)
         return sound_items
@@ -167,83 +177,80 @@ class DatabaseOperations:
     @staticmethod
     def add_sound(name: str, file_name: str) -> None:
         """Add sound to database"""
-        client = ClientFactory.get_database_client()
+        conn = ClientFactory.get_database_connection()
         try:
-            query = f"""
-                INSERT INTO "{Config.CLOUDFLARE_TABLE_NAME}" (name, file_name) 
-                VALUES (:name, :file_name);
-            """
-
-            client.d1.database.query(
-                database_id=Config.CLOUDFLARE_DATABASE_ID,
-                account_id=Config.CLOUDFLARE_ACCOUNT_ID,
-                sql=query,
-                params=[name, file_name],
-            )
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO sounds (name, file_name) VALUES (%s, %s);",
+                    (name, file_name)
+                )
+                conn.commit()
         except Exception as e:
+            conn.rollback()
             raise ValueError(f"{ErrorMessages.UPLOAD_DATABASE}: {str(e)}")
 
     @staticmethod
     def delete_sound(name: str) -> None:
         """Delete sound from database"""
-        client = ClientFactory.get_database_client()
+        conn = ClientFactory.get_database_connection()
         try:
-            query = f"""
-                DELETE FROM "{Config.CLOUDFLARE_TABLE_NAME}" 
-                WHERE name = :name;
-            """
-
-            client.d1.database.query(
-                database_id=Config.CLOUDFLARE_DATABASE_ID,
-                account_id=Config.CLOUDFLARE_ACCOUNT_ID,
-                sql=query,
-                params=[name],
-            )
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM sounds WHERE name = %s;",
+                    (name,)
+                )
+                conn.commit()
         except Exception as e:
+            conn.rollback()
             raise ValueError(f"{ErrorMessages.DELETE_DATABASE}: {str(e)}")
 
 
 class S3Operations:
     @staticmethod
     async def upload_file(file: discord.Attachment) -> None:
-        """Upload file to S3"""
-        s3 = ClientFactory.get_s3_client()
+        """Upload file to MinIO"""
+        client = ClientFactory.get_minio_client()
         try:
             file_data = await file.read()
-            s3.put_object(
-                Bucket=Config.CLOUDFLARE_BUCKET_NAME,
-                Key=f"{Config.SOUNDBOARD_DIR}/{file.filename}",
-                Body=file_data,
-                ContentType=file.content_type,
+            from io import BytesIO
+            
+            client.put_object(
+                Config.MINIO_BUCKET_NAME,
+                f"{Config.SOUNDBOARD_DIR}/{file.filename}",
+                BytesIO(file_data),
+                length=len(file_data),
+                content_type=file.content_type or "application/octet-stream"
             )
-        except Exception:
-            raise ValueError(ErrorMessages.UPLOAD_S3)
+        except Exception as e:
+            raise ValueError(f"{ErrorMessages.UPLOAD_S3}: {str(e)}")
 
     @staticmethod
     def delete_file(file_name: str) -> None:
-        """Delete file from S3"""
-        s3 = ClientFactory.get_s3_client()
+        """Delete file from MinIO"""
+        client = ClientFactory.get_minio_client()
         try:
-            s3.delete_object(
-                Bucket=Config.CLOUDFLARE_BUCKET_NAME,
-                Key=f"{Config.SOUNDBOARD_DIR}/{file_name}",
+            client.remove_object(
+                Config.MINIO_BUCKET_NAME,
+                f"{Config.SOUNDBOARD_DIR}/{file_name}"
             )
-        except Exception:
-            raise ValueError(ErrorMessages.DELETE_S3)
+        except Exception as e:
+            raise ValueError(f"{ErrorMessages.DELETE_S3}: {str(e)}")
 
     @staticmethod
     def download_file(file_name: str) -> None:
-        """Download file from S3"""
-        s3 = ClientFactory.get_s3_client()
+        """Download file from MinIO"""
+        client = ClientFactory.get_minio_client()
         try:
             local_path = Config.CACHE_DIR / "sounds" / file_name
-            s3.download_file(
-                Config.CLOUDFLARE_BUCKET_NAME,
+            SoundCache.ensure_cache_dir()
+            
+            client.fget_object(
+                Config.MINIO_BUCKET_NAME,
                 f"{Config.SOUNDBOARD_DIR}/{file_name}",
-                str(local_path),
+                str(local_path)
             )
-        except Exception:
-            raise ValueError(ErrorMessages.DOWNLOAD_SOUND)
+        except Exception as e:
+            raise ValueError(f"{ErrorMessages.DOWNLOAD_SOUND}: {str(e)}")
 
 
 class FileOperations:

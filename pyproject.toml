@@ -1,5 +1,0 @@
-[project]
-name = "Criwin"
-version = "1.0"
-requires-python = "= 3.12"
-description = "A bot for the Crimson Winter Mountain Discord server"
