@@ -9,8 +9,11 @@ from PIL import Image
 from src.commands.constants import DOWNLOAD_DIR
 from src.commands.download.constants import SUPPORTED_DOMAINS, VIDEO_EXTENSIONS
 
+YOUTUBE_COOKIE_FILE = "./www.youtube.com_cookies.txt"
+INSTAGRAM_COOKIE_FILE = "./www.instagram.com_cookies.txt"
+
 # yt-dlp configuration
-YTDL_META = {"quiet": True, "skip_download": True, "noplaylist": True}
+YTDL_META = {"quiet": True, "skip_download": True, "noplaylist": True, "cookiefile": YOUTUBE_COOKIE_FILE}
 
 YTDL_AUDIO = {
     "format": "bestaudio/best",
@@ -24,6 +27,7 @@ YTDL_AUDIO = {
     ],
     "quiet": True,
     "noplaylist": True,
+    "cookiefile": YOUTUBE_COOKIE_FILE,
 }
 
 YTDL_VIDEO = {
@@ -38,11 +42,7 @@ YTDL_VIDEO = {
     }],
     "writethumbnail": False,
     "embedmetadata": True,
-}
-
-YTDL_VIDEO_WITH_COOKIES = {
-    **YTDL_VIDEO,
-    "cookiefile": "./www.youtube.com_cookies.txt",
+    "cookiefile": YOUTUBE_COOKIE_FILE,
 }
 
 # Configuration messages
@@ -84,23 +84,18 @@ def video_downloader(url: str, is_video_download: bool) -> Path:
         if is_live or was_live:
             raise ValueError(LIVE_STREAM_MESSAGE)
 
+        opts = YTDL_VIDEO if is_video_download else YTDL_AUDIO
+        with YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            file_name = ydl.prepare_filename(info)
+        
         if is_video_download:
-            # Download video
-            ydl = YoutubeDL(YTDL_VIDEO_WITH_COOKIES)
-            video_info = ydl.extract_info(url, download=True)
-            file_name = ydl.prepare_filename(video_info)
             return Path(file_name)
-
         else:
-            # Download audio
-            ydl = YoutubeDL(YTDL_AUDIO)
-            audio_info = ydl.extract_info(url, download=True)
-            file_name = ydl.prepare_filename(audio_info)
-            base_name = f"{os.path.splitext(file_name)[0]}.mp3"
-            return Path(base_name)
+            audio_file_name = f"{os.path.splitext(file_name)[0]}.mp3"
+            return Path(audio_file_name)
 
     except ValueError:
-        # Re-raise validation errors (like duration limits)
         raise
 
     except Exception as error:
@@ -136,7 +131,7 @@ def gallery_downloader(url: str) -> Union[List[Path], Path]:
         ("extractor",),
         "instagram",
         {
-            "cookies": "www.instagram.com_cookies.txt",
+            "cookies": INSTAGRAM_COOKIE_FILE,
         },
     )
 
