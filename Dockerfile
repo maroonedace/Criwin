@@ -6,7 +6,9 @@ WORKDIR /criwin
 
 # Install OS libraries
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get install -y ffmpeg libpq-dev gcc && \
+    apt-get install -y ffmpeg libpq-dev gcc curl && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
     # Create required directories
