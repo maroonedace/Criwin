@@ -6,16 +6,15 @@ WORKDIR /criwin
 
 # Install OS libraries
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get install -y ffmpeg libpq-dev gcc curl && \
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y nodejs && \
+    apt-get install -y ffmpeg libpq-dev gcc curl unzip && \
+    curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh && \
     rm -rf /var/lib/apt/lists/*
 
     # Create required directories
 RUN mkdir -p cache/sounds downloads
 
 RUN pip install --no-cache-dir \
-    yt-dlp \
+    "yt-dlp[default]" \
     discord.py[voice] \
     dotenv \
     psycopg2-binary \
