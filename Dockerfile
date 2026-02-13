@@ -22,7 +22,8 @@ RUN pip install --no-cache-dir \
     pillow
 
 # Copy cookies file
-COPY cookies.txt ./cookies.txt
+COPY www.youtube.com_cookies.txt ./www.youtube.com_cookies.txt
+COPY www.instagram.com_cookies.txt ./www.instagram.com_cookies.txt
 
 # Copy application code
 COPY src/ ./src/
