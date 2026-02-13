@@ -9,8 +9,20 @@ from PIL import Image
 from src.commands.constants import DOWNLOAD_DIR
 from src.commands.download.constants import SUPPORTED_DOMAINS, VIDEO_EXTENSIONS
 
-YOUTUBE_COOKIE_FILE = "./www.youtube.com_cookies.txt"
-INSTAGRAM_COOKIE_FILE = "./www.instagram.com_cookies.txt"
+YOUTUBE_COOKIE_FILE = "/criwin/www.youtube.com_cookies.txt"
+INSTAGRAM_COOKIE_FILE = "/criwin/www.instagram.com_cookies.txt"
+
+cookie_path = Path(YOUTUBE_COOKIE_FILE)
+if not cookie_path.exists():
+    print(f"WARNING: Cookie file not found at {cookie_path.resolve()}")
+elif not cookie_path.stat().st_size:
+    print(f"WARNING: Cookie file is empty at {cookie_path.resolve()}")
+
+cookie_path = Path(INSTAGRAM_COOKIE_FILE)
+if not cookie_path.exists():
+    print(f"WARNING: Cookie file not found at {cookie_path.resolve()}")
+elif not cookie_path.stat().st_size:
+    print(f"WARNING: Cookie file is empty at {cookie_path.resolve()}")
 
 # yt-dlp configuration
 YTDL_META = {"quiet": True, "skip_download": True, "noplaylist": True, "cookiefile": YOUTUBE_COOKIE_FILE}
