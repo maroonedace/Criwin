@@ -42,7 +42,7 @@ YTDL_VIDEO = {
 
 YTDL_VIDEO_WITH_COOKIES = {
     **YTDL_VIDEO,
-    "cookiefile": "./cookies.txt",
+    "cookiefile": "./www.youtube.com_cookies.txt",
 }
 
 # Configuration messages
@@ -136,7 +136,7 @@ def gallery_downloader(url: str) -> Union[List[Path], Path]:
         ("extractor",),
         "instagram",
         {
-            "cookies": "cookies.txt",
+            "cookies": "www.instagram.com_cookies.txt",
         },
     )
 
