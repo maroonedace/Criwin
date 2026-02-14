@@ -34,9 +34,12 @@ YTDL_AUDIO = {
         {
             "key": "FFmpegExtractAudio",
             "preferredcodec": "mp3",
-            "preferredquality": "128",
+            "preferredquality": "320",
         }
     ],
+        "postprocessor_args": {
+        "FFmpegExtractAudio": ["-ar", "44100"],
+    },
     "quiet": True,
     "noplaylist": True,
     "cookiefile": YOUTUBE_COOKIE_FILE,
