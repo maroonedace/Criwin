@@ -1,11 +1,12 @@
-from discord import Intents, app_commands, Object, Client
+import logging
+from discord import Intents, Message, app_commands, Object, Client
 from src.commands import setup_commands
+from src.messages import handle_dm_message
 
 class DiscordBot(Client):
     def __init__(self, guild_id: int):
-        # Set up intents
         intents = Intents.default()
-        intents.voice_states = True
+        intents.voice_states = True 
         intents.message_content = True
         
         super().__init__(intents=intents)
@@ -15,16 +16,20 @@ class DiscordBot(Client):
     
     async def setup_hook(self):
         """Initialize commands and sync with Discord"""
-        # Clear existing commands to remove deprecated commands
         self.tree.clear_commands(guild=self.guild)
         
-        # Set up discord commands
         setup_commands(self.tree)
-        
-        # Sync to guild to sync commands immediately
+
         self.tree.copy_global_to(guild=self.guild)
         await self.tree.sync(guild=self.guild)
     
+    
+    async def on_message(self, message: Message):
+        if message.author == self.user:
+            return
+        
+        if message.guild is None:
+            await handle_dm_message(message)
+    
     async def on_ready(self):
-        """Handle bot ready event"""
-        print(f'We have logged in as {self.user}')
+        logging.info(f"Logged in as {self.user}")

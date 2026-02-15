@@ -1,10 +1,15 @@
 import os
 from dotenv import load_dotenv
-
-from src import DiscordBot
+from src.logger import setup_logging
 
 # Load environment variables
 load_dotenv()
+
+# Setup logging
+setup_logging()
+
+# Import DiscordBot
+from src import DiscordBot
 
 def main():
     # Get configuration

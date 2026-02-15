@@ -22,4 +22,4 @@ sounds
 .vscode/
 
 # Cookies
-cookies.txt
+*_cookies.txt
