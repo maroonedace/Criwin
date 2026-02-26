@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import re
+import subprocess
 from yt_dlp import YoutubeDL
 from typing import List, Union
 from gallery_dl import config, job
@@ -70,6 +71,32 @@ def is_supported_url(url: str) -> bool:
 def is_instagram_reel(url: str) -> bool:
     reel_pattern = r"https?://(?:www\.)?instagram\.com/reel/[^/\s]+/?"
     return bool(re.match(reel_pattern, url))
+
+def convert_to_mp4(file_path: Path) -> Path:
+    mp4_path = file_path.with_suffix(".mp4")
+    result = subprocess.run(
+        [
+            "ffmpeg", "-i", str(file_path),
+            "-c", "copy", "-movflags", "+faststart",
+            "-y", str(mp4_path),
+        ],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        # Fall back to full re-encode
+        result = subprocess.run(
+            [
+                "ffmpeg", "-i", str(file_path),
+                "-c:v", "libx264", "-c:a", "aac",
+                "-movflags", "+faststart",
+                "-y", str(mp4_path),
+            ],
+            capture_output=True,
+        )
+    if result.returncode == 0:
+        file_path.unlink()
+        return mp4_path
+    return file_path
 
 
 def video_downloader(url: str, is_video_download: bool) -> Path:
@@ -147,7 +174,10 @@ def gallery_downloader(url: str) -> Union[List[Path], Path]:
     downloaded_files = [f for f in download_path.rglob("*") if f.is_file()]
     
     if len(downloaded_files) == 1 and downloaded_files[0].suffix.lower() in VIDEO_EXTENSIONS:
-        return downloaded_files[0]
+        video = downloaded_files[0]
+        if video.suffix.lower() != ".mp4":
+            video = convert_to_mp4(video)
+        return video
 
     # Convert images to PNG
     converted_files = []
