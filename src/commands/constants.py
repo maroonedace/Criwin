@@ -1,4 +1,72 @@
 from pathlib import Path
 
+import os
+
 # Download Directory
-DOWNLOAD_DIR = str("downloads")
+DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "/criwin/downloads")
+
+YOUTUBE_COOKIE_FILE = "/criwin/www.youtube.com_cookies.txt"
+INSTAGRAM_COOKIE_FILE = "/criwin/www.instagram.com_cookies.txt"
+
+COOKIE_MAP = {
+    "youtube.com": YOUTUBE_COOKIE_FILE,
+    "youtu.be": YOUTUBE_COOKIE_FILE,
+    "instagram.com": INSTAGRAM_COOKIE_FILE,
+}
+
+DEFAULT_UPLOAD_LIMIT_MB = 10
+
+BOOST_LEVEL_UPLOAD_SIZE = {
+    0: 10,
+    1: 10,
+    2: 50,
+    3: 100,
+}
+
+# yt-dlp base configurations (cookie file is injected at download time)
+YTDL_META = {
+    "quiet": True,
+    "skip_download": True,
+    "noplaylist": True,
+}
+
+YTDL_AUDIO = {
+    "format": "bestaudio/best",
+    "outtmpl": os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s"),
+    "postprocessors": [
+        {
+            "key": "FFmpegExtractAudio",
+            "preferredcodec": "mp3",
+            "preferredquality": "320",
+        }
+    ],
+    "postprocessor_args": {
+        "FFmpegExtractAudio": ["-ar", "44100"],
+    },
+    "quiet": True,
+    "noplaylist": True,
+}
+
+YTDL_VIDEO = {
+    "format": "(bestvideo[vcodec^=avc1][height<=480]+bestaudio[acodec^=mp4a])/best[vcodec^=avc1][height<=480]/best",
+    "merge_output_format": "mp4",
+    "outtmpl": os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s"),
+    "quiet": True,
+    "noplaylist": True,
+    "postprocessors": [{
+        "key": "FFmpegVideoConvertor",
+        "preferedformat": "mp4",
+    }],
+    "writethumbnail": False,
+    "embedmetadata": True,
+}
+
+# User-facing messages
+NOT_VIDEO_MESSAGE = "⚠️ This is not a video."
+PLAYLIST_MESSAGE = "⚠️ This is a playlist."
+LIVE_STREAM_MESSAGE = "⚠️ This is a live stream."
+URL_INVALID_MESSAGE = "⚠️ This URL is invalid or the video could not be downloaded."
+UNSUPPORTED_URL_MESSAGE = "⚠️ This URL is not from a supported platform."
+LARGE_FILE_MESSAGE = "⚠️ The file is too large to upload."
+LIMIT_DOWNLOAD_MESSAGE = "⚠️ You already have a download in progress."
+DOWNLOAD_SENT_TO_CHANNEL_MESSAGE = "✅ Download sent to the channel."

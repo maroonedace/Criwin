@@ -1,7 +1,10 @@
 import logging
 from discord import Intents, Message, app_commands, Object, Client
+
 from src.commands import setup_commands
 from src.messages import handle_dm_message
+
+logger = logging.getLogger(__name__)
 
 class DiscordBot(Client):
     def __init__(self, guild_id: int):
@@ -32,4 +35,4 @@ class DiscordBot(Client):
             await handle_dm_message(message)
     
     async def on_ready(self):
-        logging.info(f"Logged in as {self.user}")
+        logger.info("Logged in as %s", self.user)
