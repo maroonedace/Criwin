@@ -50,7 +50,7 @@ def is_file_too_large(file_path: str, max_size_mb: int) -> bool:
     return file_size_mb > max_size_mb
 
 
-def _inject_cookies(opts: dict, cookie_file: str | None) -> dict:
+def inject_cookies(opts: dict, cookie_file: str | None) -> dict:
     """Return a copy of the yt-dlp options with the cookie file injected."""
     opts = dict(opts)
     if cookie_file is not None:
@@ -111,7 +111,7 @@ def video_downloader(url: str, is_video_download: bool) -> Path:
     cookie_file = get_cookie_file(url)
 
     try:
-        meta_opts = _inject_cookies(YTDL_META, cookie_file)
+        meta_opts = inject_cookies(YTDL_META, cookie_file)
         ydl = YoutubeDL(meta_opts)
         video_info = ydl.extract_info(url, download=False)
 
@@ -121,7 +121,7 @@ def video_downloader(url: str, is_video_download: bool) -> Path:
             raise ValueError(LIVE_STREAM_MESSAGE)
 
         base_opts = YTDL_VIDEO if is_video_download else YTDL_AUDIO
-        download_opts = _inject_cookies(base_opts, cookie_file)
+        download_opts = inject_cookies(base_opts, cookie_file)
 
         with YoutubeDL(download_opts) as ydl:
             info = ydl.extract_info(url, download=True)

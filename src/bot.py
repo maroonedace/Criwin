@@ -23,6 +23,8 @@ class DiscordBot(Client):
         
         setup_commands(self.tree)
 
+        await self.tree.sync()
+
         self.tree.copy_global_to(guild=self.guild)
         await self.tree.sync(guild=self.guild)
     
