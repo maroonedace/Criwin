@@ -6,11 +6,11 @@ import logging
 
 from dotenv import load_dotenv
 
+from src import DiscordBot
+
 # Load environment variables before internal imports
 load_dotenv()
 
-# Import DiscordBot
-from src import DiscordBot
 
 def setup_logging() -> None:
     """Configure root logger for the application."""

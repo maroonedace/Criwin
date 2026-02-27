@@ -1,0 +1,191 @@
+import os
+import logging
+import subprocess
+from pathlib import Path
+from typing import Union
+from urllib.parse import urlparse
+
+from PIL import Image
+from yt_dlp import YoutubeDL
+from gallery_dl import config, job
+
+from src.download.constants import (
+    COOKIE_MAP,
+    INSTAGRAM_COOKIE_FILE,
+    LIVE_STREAM_MESSAGE,
+    URL_INVALID_MESSAGE,
+    UNSUPPORTED_URL_MESSAGE,
+    YTDL_AUDIO,
+    YTDL_META,
+    YTDL_VIDEO,
+    VIDEO_EXTENSIONS,
+    DOWNLOAD_DIR,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def get_cookie_file(url: str) -> str | None:
+    """Return the appropriate cookie file path for the given URL domain."""
+    hostname = urlparse(url).hostname or ""
+    for domain, cookie_path in COOKIE_MAP.items():
+        if hostname == domain or hostname.endswith(f".{domain}"):
+            return cookie_path
+    return None
+
+
+def is_supported_url(url: str) -> bool:
+    """Check if the URL belongs to a supported platform."""
+    return get_cookie_file(url) is not None
+
+def is_instagram_url(url: str) -> bool:
+    """Check if the URL is from Instagram."""
+    hostname = urlparse(url).hostname or ""
+    return hostname == "instagram.com" or hostname.endswith(".instagram.com")
+
+
+def is_file_too_large(file_path: str, max_size_mb: int) -> bool:
+    """Check if the file exceeds the given size limit."""
+    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+    return file_size_mb > max_size_mb
+
+
+def _inject_cookies(opts: dict, cookie_file: str | None) -> dict:
+    """Return a copy of the yt-dlp options with the cookie file injected."""
+    opts = dict(opts)
+    if cookie_file is not None:
+        opts["cookiefile"] = cookie_file
+    return opts
+
+
+def convert_to_mp4(file_path: Path) -> Path:
+    """Convert a video file to mp4, attempting stream copy first then re-encode."""
+    mp4_path = file_path.with_suffix(".mp4")
+
+    result = subprocess.run(
+        [
+            "ffmpeg", "-i", str(file_path),
+            "-c", "copy", "-movflags", "+faststart",
+            "-y", str(mp4_path),
+        ],
+        capture_output=True,
+    )
+
+    if result.returncode != 0:
+        result = subprocess.run(
+            [
+                "ffmpeg", "-i", str(file_path),
+                "-c:v", "libx264", "-c:a", "aac",
+                "-movflags", "+faststart",
+                "-y", str(mp4_path),
+            ],
+            capture_output=True,
+        )
+
+    if result.returncode == 0:
+        file_path.unlink()
+        return mp4_path
+
+    logger.warning("Failed to convert %s to mp4", file_path)
+    return file_path
+
+
+def convert_to_png(file_path: Path) -> Path | None:
+    """Convert an image file to PNG format."""
+    try:
+        with Image.open(file_path) as img:
+            stem = file_path.stem.rstrip(".")
+            png_path = file_path.parent / f"{stem}.png"
+            img.save(png_path, "PNG")
+            return png_path
+    except Exception:
+        logger.exception("Failed to convert %s to PNG", file_path)
+        return None
+
+
+def video_downloader(url: str, is_video_download: bool) -> Path:
+    """Download media from the given URL using yt-dlp and return the file path."""
+    if not is_supported_url(url):
+        raise ValueError(UNSUPPORTED_URL_MESSAGE)
+
+    cookie_file = get_cookie_file(url)
+
+    try:
+        meta_opts = _inject_cookies(YTDL_META, cookie_file)
+        ydl = YoutubeDL(meta_opts)
+        video_info = ydl.extract_info(url, download=False)
+
+        is_live = video_info.get("is_live", False)
+        was_live = video_info.get("was_live", False)
+        if is_live or was_live:
+            raise ValueError(LIVE_STREAM_MESSAGE)
+
+        base_opts = YTDL_VIDEO if is_video_download else YTDL_AUDIO
+        download_opts = _inject_cookies(base_opts, cookie_file)
+
+        with YoutubeDL(download_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            file_name = ydl.prepare_filename(info)
+
+        if is_video_download:
+            return Path(file_name)
+
+        audio_file_name = f"{os.path.splitext(file_name)[0]}.mp3"
+        return Path(audio_file_name)
+
+    except ValueError:
+        raise
+
+    except Exception as error:
+        logger.exception("Download failed for URL: %s", url)
+        raise ValueError(URL_INVALID_MESSAGE) from error
+
+
+def gallery_downloader(url: str) -> Union[list[Path], Path]:
+    """Download media from Instagram using gallery-dl. Returns a single Path for
+    videos or a list of Paths for images."""
+    download_path = Path(DOWNLOAD_DIR).resolve()
+    download_path.mkdir(parents=True, exist_ok=True)
+
+    config.load()
+    config.set((), "base-directory", str(download_path))
+    config.set(
+        ("extractor",),
+        "instagram",
+        {"cookies": INSTAGRAM_COOKIE_FILE},
+    )
+
+    try:
+        download_job = job.DownloadJob(url)
+        download_job.run()
+    except Exception as error:
+        logger.exception("Gallery download failed for URL: %s", url)
+        raise ValueError(URL_INVALID_MESSAGE) from error
+
+    downloaded_files = [f for f in download_path.rglob("*") if f.is_file()]
+
+    if not downloaded_files:
+        raise ValueError(URL_INVALID_MESSAGE)
+
+    # Single video file
+    if len(downloaded_files) == 1 and downloaded_files[0].suffix.lower() in VIDEO_EXTENSIONS:
+        video = downloaded_files[0]
+        if video.suffix.lower() != ".mp4":
+            video = convert_to_mp4(video)
+        return video
+
+    # Image files: convert to PNG
+    converted_files = []
+    for file_path in downloaded_files:
+        if file_path.suffix.lower() == ".png":
+            converted_files.append(file_path)
+            continue
+
+        png_path = convert_to_png(file_path)
+        if png_path is not None:
+            converted_files.append(png_path)
+            file_path.unlink()
+        else:
+            converted_files.append(file_path)
+
+    return converted_files[::-1]

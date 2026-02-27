@@ -1,8 +1,5 @@
-from pathlib import Path
-
 import os
 
-# Download Directory
 DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "/criwin/downloads")
 
 YOUTUBE_COOKIE_FILE = "/criwin/www.youtube.com_cookies.txt"
@@ -22,6 +19,10 @@ BOOST_LEVEL_UPLOAD_SIZE = {
     2: 50,
     3: 100,
 }
+
+SUPPORTED_DOMAINS = ["youtube.com", "youtu.be", "instagram.com"]
+
+VIDEO_EXTENSIONS = {".mp4", ".webm", ".mkv", ".avi", ".mov"}
 
 # yt-dlp base configurations (cookie file is injected at download time)
 YTDL_META = {
@@ -67,6 +68,3 @@ PLAYLIST_MESSAGE = "⚠️ This is a playlist."
 LIVE_STREAM_MESSAGE = "⚠️ This is a live stream."
 URL_INVALID_MESSAGE = "⚠️ This URL is invalid or the video could not be downloaded."
 UNSUPPORTED_URL_MESSAGE = "⚠️ This URL is not from a supported platform."
-LARGE_FILE_MESSAGE = "⚠️ The file is too large to upload."
-LIMIT_DOWNLOAD_MESSAGE = "⚠️ You already have a download in progress."
-DOWNLOAD_SENT_TO_CHANNEL_MESSAGE = "✅ Download sent to the channel."
