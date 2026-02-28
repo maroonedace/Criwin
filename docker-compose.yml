@@ -44,7 +44,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    
     container_name: criwin-bot
     restart: unless-stopped
     depends_on:
@@ -52,11 +51,13 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    
     environment:
+
+      # Discord Configuration
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       GUILD_ID: ${GUILD_ID}
       
+      # PostgreSQL Configuration
       POSTGRES_HOST: postgres
       POSTGRES_PORT: ${DB_PORT}
       POSTGRES_DB: ${DB_NAME}
@@ -69,6 +70,12 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       MINIO_USE_SSL: ${MINIO_USE_SSL}
+    
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     volumes:
       - ./src:/criwin/src
       - ./main.py:/criwin/main.py

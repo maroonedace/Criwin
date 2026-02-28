@@ -1,6 +1,6 @@
 import logging
-from discord import Intents, Message, app_commands, Object, Client
 
+from discord import Intents, Message, app_commands, Object, Client
 from src.commands import setup_commands
 from src.messages import handle_dm_message
 
@@ -19,15 +19,9 @@ class DiscordBot(Client):
     
     async def setup_hook(self):
         """Initialize commands and sync with Discord"""
-        self.tree.clear_commands(guild=self.guild)
-        
-        setup_commands(self.tree)
-
+        logger.info("Syncing commands globally")
         await self.tree.sync()
-
-        self.tree.copy_global_to(guild=self.guild)
-        await self.tree.sync(guild=self.guild)
-    
+        setup_commands(self.tree)
     
     async def on_message(self, message: Message):
         if message.author == self.user:
