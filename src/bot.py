@@ -19,9 +19,10 @@ class DiscordBot(Client):
     
     async def setup_hook(self):
         """Initialize commands and sync with Discord"""
+        setup_commands(self.tree)
+        
         logger.info("Syncing commands globally")
         await self.tree.sync()
-        setup_commands(self.tree)
     
     async def on_message(self, message: Message):
         if message.author == self.user:
