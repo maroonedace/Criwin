@@ -15,7 +15,8 @@ RUN mkdir -p cache/sounds downloads
 
 RUN pip install --no-cache-dir \
     "yt-dlp[default]" \
-    discord.py[voice] \
+    "discord.py[voice]>=2.7.0" \
+    davey \
     dotenv \
     psycopg2-binary \
     minio \
