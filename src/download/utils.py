@@ -62,25 +62,36 @@ def convert_to_mp4(file_path: Path) -> Path:
     """Convert a video file to mp4, attempting stream copy first then re-encode."""
     mp4_path = file_path.with_suffix(".mp4")
 
-    result = subprocess.run(
+    # Probe the source codecs
+    probe = subprocess.run(
         [
+            "ffprobe", "-v", "quiet",
+            "-show_entries", "stream=codec_name",
+            "-of", "csv=p=0",
+            str(file_path),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    codecs = [line.strip() for line in probe.stdout.splitlines() if line.strip()]
+    copy_safe = all(c in ("h264", "aac", "mp3") for c in codecs)
+
+    if copy_safe:
+        cmd = [
             "ffmpeg", "-i", str(file_path),
             "-c", "copy", "-movflags", "+faststart",
             "-y", str(mp4_path),
-        ],
-        capture_output=True,
-    )
+        ]
+    else:
+        cmd = [
+            "ffmpeg", "-i", str(file_path),
+            "-c:v", "libx264", "-c:a", "aac",
+            "-movflags", "+faststart",
+            "-y", str(mp4_path),
+        ]
 
-    if result.returncode != 0:
-        result = subprocess.run(
-            [
-                "ffmpeg", "-i", str(file_path),
-                "-c:v", "libx264", "-c:a", "aac",
-                "-movflags", "+faststart",
-                "-y", str(mp4_path),
-            ],
-            capture_output=True,
-        )
+    result = subprocess.run(cmd, capture_output=True)
 
     if result.returncode == 0:
         file_path.unlink()
@@ -167,25 +178,36 @@ def gallery_downloader(url: str) -> Union[list[Path], Path]:
     if not downloaded_files:
         raise ValueError(URL_INVALID_MESSAGE)
 
-    # Single video file
-    if len(downloaded_files) == 1 and downloaded_files[0].suffix.lower() in VIDEO_EXTENSIONS:
-        video = downloaded_files[0]
-        if video.suffix.lower() != ".mp4":
-            video = convert_to_mp4(video)
-        return video
+    videos = [f for f in downloaded_files if f.suffix.lower() in VIDEO_EXTENSIONS]
+    images = [f for f in downloaded_files if f.suffix.lower() not in VIDEO_EXTENSIONS]
 
-    # Image files: convert to PNG
-    converted_files = []
-    for file_path in downloaded_files:
+    # Convert videos to mp4
+    converted_videos = []
+    for video in videos:
+        if video.suffix.lower() != ".mp4":
+            converted = convert_to_mp4(video)
+            converted_videos.append(converted)
+        else:
+            converted_videos.append(video)
+    
+    # Convert all images to PNG
+    converted_images = []
+    for file_path in images:
         if file_path.suffix.lower() == ".png":
-            converted_files.append(file_path)
+            converted_images.append(file_path)
             continue
 
         png_path = convert_to_png(file_path)
         if png_path is not None:
-            converted_files.append(png_path)
+            converted_images.append(png_path)
             file_path.unlink()
         else:
-            converted_files.append(file_path)
+            converted_images.append(file_path)
+        
+    all_files = converted_videos + converted_images
 
-    return converted_files[::-1]
+    # Return single video or list of files
+    if len(all_files) == 1 and all_files[0].suffix.lower() == ".mp4":
+        return all_files[0]
+
+    return all_files[::-1]
