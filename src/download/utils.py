@@ -91,7 +91,8 @@ def convert_to_mp4(file_path: Path) -> Path:
     else:
         cmd = [
             "ffmpeg", "-i", str(file_path),
-            "-c:v", "libx264", "-c:a", "aac",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "28",
+            "-c:a", "aac", "-b:a", "128k",
             "-movflags", "+faststart",
             "-y", str(mp4_path),
         ]
