@@ -77,6 +77,11 @@ def convert_to_mp4(file_path: Path) -> Path:
     codecs = [line.strip() for line in probe.stdout.splitlines() if line.strip()]
     copy_safe = all(c in ("h264", "aac", "mp3") for c in codecs)
 
+    if copy_safe and file_path.suffix.lower() == ".mp4":
+        return file_path
+    
+    mp4_path = file_path.with_name(f"{file_path.stem}_converted.mp4")
+
     if copy_safe:
         cmd = [
             "ffmpeg", "-i", str(file_path),
@@ -95,7 +100,9 @@ def convert_to_mp4(file_path: Path) -> Path:
 
     if result.returncode == 0:
         file_path.unlink()
-        return mp4_path
+        final_path = file_path.with_suffix(".mp4")
+        mp4_path.rename(final_path)
+        return final_path
 
     logger.warning("Failed to convert %s to mp4", file_path)
     return file_path
@@ -184,11 +191,7 @@ def gallery_downloader(url: str) -> Union[list[Path], Path]:
     # Convert videos to mp4
     converted_videos = []
     for video in videos:
-        if video.suffix.lower() != ".mp4":
-            converted = convert_to_mp4(video)
-            converted_videos.append(converted)
-        else:
-            converted_videos.append(video)
+        converted_videos.append(convert_to_mp4(video))
     
     # Convert all images to PNG
     converted_images = []

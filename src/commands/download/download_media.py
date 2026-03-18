@@ -37,7 +37,7 @@ async def setup_download_media(
     url: str,
     is_visible: bool,
 ) -> None:
-    await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer(ephemeral=not is_visible)
 
     user_id = interaction.user.id
 
@@ -68,9 +68,9 @@ async def setup_download_media(
 
         if is_visible and not is_dm:
             await interaction.channel.send(files=discord_files)
-            await send_message(interaction, DOWNLOAD_SENT_TO_CHANNEL_MESSAGE)
+            await send_message(interaction, DOWNLOAD_SENT_TO_CHANNEL_MESSAGE, ephemeral=True)
         else:
-            await interaction.followup.send(files=discord_files, ephemeral=True)
+            await interaction.followup.send(files=discord_files)
 
         logger.info("Media download completed for user %s", user_id)
 
