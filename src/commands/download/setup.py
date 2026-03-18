@@ -13,10 +13,10 @@ def setup_download(tree: app_commands.CommandTree):
     )
     @app_commands.describe(
         url="The URL to download audio from",
-        is_visible="Make the download visible to others in the channel",
+        is_hidden="Make the download hidden from others in the channel",
     )
-    async def download_audio(interaction: Interaction, url: str, is_visible: bool = False):
-        await setup_download_audio(interaction, active_downloads, url, is_visible)
+    async def download_audio(interaction: Interaction, url: str, is_hidden: bool = False):
+        await setup_download_audio(interaction, active_downloads, url, is_hidden)
 
     @tree.command(
         name="download-media",
@@ -24,7 +24,7 @@ def setup_download(tree: app_commands.CommandTree):
     )
     @app_commands.describe(
         url="The URL to download media from",
-        is_visible="Make the download visible to others in the channel",
+        is_hidden="Make the download hidden from others in the channel",
     )
-    async def download_media(interaction: Interaction, url: str, is_visible: bool = False):
-        await setup_download_media(interaction, active_downloads, url, is_visible)
+    async def download_media(interaction: Interaction, url: str, is_hidden: bool = False):
+        await setup_download_media(interaction, active_downloads, url, is_hidden)

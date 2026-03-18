@@ -17,9 +17,9 @@ from src.download.utils import is_file_too_large, video_downloader
 
 logger = logging.getLogger(__name__)
 
-async def setup_download_audio(interaction: Interaction, active_downloads: set[int], url: str, is_visible: bool) -> None:
+async def setup_download_audio(interaction: Interaction, active_downloads: set[int], url: str, is_hidden: bool) -> None:
     # Acknowledge the interaction and defer response
-    await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer(ephemeral=is_hidden)
 
     # Get user ID for download tracking
     user_id = interaction.user.id
@@ -51,16 +51,16 @@ async def setup_download_audio(interaction: Interaction, active_downloads: set[i
         if is_file_too_large(str(file_path), max_size_mb):
             raise ValueError(LARGE_FILE_MESSAGE)
         
-        is_dm = interaction.guild is None
-        
-        if is_visible and not is_dm:
-            await interaction.channel.send(file=File(str(file_path)))
-            await send_message(interaction, DOWNLOAD_SENT_TO_CHANNEL_MESSAGE)
-        else:
-            await interaction.followup.send(file=File(str(file_path)), ephemeral=True)
-        
-        logger.info("Audio download completed for user %s", user_id)
+        discord_file = File(str(file_path))
 
+        if is_hidden:
+            await interaction.followup.send(files=discord_file, ephemeral=True)
+            return
+        
+        await interaction.followup.send(files=discord_file, content=DOWNLOAD_SENT_TO_CHANNEL_MESSAGE)
+
+        logger.info("Audio download completed for user %s", user_id)
+        
     except ValueError as error:
         await send_message(interaction, str(error))
 
