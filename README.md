@@ -1,3 +1,10 @@
 # Criwin
+A Discord bot that lets users download short form videos and play audio on demand from platforms like YouTube, TikTok, Instagram, and Reddit.
 
-Personal Discord bot with multi-platform media ingestion from YouTube, Instagram, and Reddit, plus voice channel audio playback. Built with Python and Discord.py, using PostgreSQL for metadata and MinIO for audio storage.
+## Features
+
+### Short Form Content Downloads
+Download videos and audio from popular platforms including YouTube, Reddit, Instagram, and TikTok, all through simple slash commands.
+
+### Soundboard Audio Playback
+Play audio clips on demand from a curated selection of sounds using the soundboard command, perfect for adding personality and fun to your voice channels.
