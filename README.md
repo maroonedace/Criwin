@@ -6,7 +6,7 @@ A Discord bot that lets users download short form videos and play audio on deman
 ![FastAPI](https://shields.io/badge/FastAPI-009485?logo=fastapi&logoColor=FFF)
 ![Postgres](https://img.shields.io/badge/PostgreSQL-316192?logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-257BD6?logo=docker&logoColor=white)
-![MinIO](https://img.shields.io/badge/MinIO-C72E29?&logo=minio&logoColor=white)
+![AWS](https://custom-icon-badges.demolab.com/badge/AWS-FF9900?logo=aws&logoColor=white)
 
 ## Features
 
@@ -72,7 +72,7 @@ Handlers stay thin and delegate real work to the **services** layer.
   models that define the schema, `__init__.py` the engine/session factory, and
   `migrate.py` the entry point that applies Alembic migrations.
 - **`src/services/soundboard/`** — the soundboard data layer, split by concern:
-  `repository.py` (PostgreSQL metadata), `storage.py` (S3/MinIO audio),
+  `repository.py` (PostgreSQL metadata), `storage.py` (S3 audio),
   `cache.py` (local playback cache), `errors.py`, and `service.py`
   which orchestrates them behind a small public API.
 
@@ -119,7 +119,7 @@ the values:
 
 ### With Docker
 
-Compose starts five services: `db` (PostgreSQL), `storage` (MinIO), `migrate` (a one-shot
+Compose starts five services: `db` (PostgreSQL), `storage` (AWS S3), `migrate` (a one-shot
 that brings the database schema up to date and exits), `app` (the bot), and `admin` (the
 web panel). `app` and `admin` wait for `migrate` to succeed, so a failed migration stops
 the stack instead of letting the bot run against a schema it doesn't expect. All
