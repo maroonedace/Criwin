@@ -6,7 +6,7 @@ A Discord bot that lets users download short form videos and play audio on deman
 ![FastAPI](https://shields.io/badge/FastAPI-009485?logo=fastapi&logoColor=FFF)
 ![Postgres](https://img.shields.io/badge/PostgreSQL-316192?logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-257BD6?logo=docker&logoColor=white)
-![MinIO](https://img.shields.io/badge/MinIO-C72E29?&logo=minio&logoColor=white)
+![AWS](https://custom-icon-badges.demolab.com/badge/AWS-FF9900?logo=aws&logoColor=white)
 
 ## Features
 
@@ -68,15 +68,22 @@ Handlers stay thin and delegate real work to the **services** layer.
 - **`src/services/media/`** — framework-agnostic download/transcode engine
   (`downloader.py`: yt-dlp + gallery-dl + ffmpeg/Pillow conversions; `constants.py`:
   cookie maps, upload-size tiers, and yt-dlp option sets).
+- **`src/services/db/`** — the database plumbing: `models.py` holds the SQLAlchemy
+  models that define the schema, `__init__.py` the engine/session factory, and
+  `migrate.py` the entry point that applies Alembic migrations.
 - **`src/services/soundboard/`** — the soundboard data layer, split by concern:
-  `repository.py` (PostgreSQL metadata), `storage.py` (S3/MinIO audio),
-  `cache.py` (local playback cache), `models.py`, `errors.py`, and `service.py`
+  `repository.py` (PostgreSQL metadata), `storage.py` (S3 audio),
+  `cache.py` (local playback cache), `errors.py`, and `service.py`
   which orchestrates them behind a small public API.
 
 ### Project layout
 
 ```
 main.py                       # entry point / composition root
+alembic.ini                   # Alembic configuration
+alembic/
+├── env.py                    # points autogenerate at the SQLAlchemy models
+└── versions/                 # migration scripts, applied in order
 src/
 ├── bot.py                    # DiscordBot client + command tree
 ├── config.py                 # central configuration + validation
@@ -84,8 +91,9 @@ src/
 ├── core/
 │   └── messaging.py          # send_message helper
 ├── services/
+│   ├── db/                   # models (the schema), engine/session, migrate entrypoint
 │   ├── media/                # download engine (downloader.py, constants.py)
-│   └── soundboard/           # models, errors, repository, storage, cache, service
+│   └── soundboard/           # errors, repository, storage, cache, service
 └── commands/
     ├── setup.py              # setup_commands: aggregates all feature registrars
     ├── soundboard/           # __init__ (registrar) + play/add/delete.py + constants.py
@@ -111,8 +119,10 @@ the values:
 
 ### With Docker
 
-Compose starts four services: `db` (PostgreSQL), `storage` (MinIO), `app` (the bot),
-and `admin` (the web panel). The database schema is bootstrapped from `init.sql`. All
+Compose starts five services: `db` (PostgreSQL), `storage` (AWS S3), `migrate` (a one-shot
+that brings the database schema up to date and exits), `app` (the bot), and `admin` (the
+web panel). `app` and `admin` wait for `migrate` to succeed, so a failed migration stops
+the stack instead of letting the bot run against a schema it doesn't expect. All
 configuration comes from the env file — the compose files only pass `${VARS}` through. So
 for Docker your env file must point the app at the compose service names: set
 `DB_HOST=db` and `STORAGE_ENDPOINT=storage:9000` (the `localhost` values in
@@ -153,9 +163,11 @@ Bash, or use the `docker compose` commands above directly.)
 
 ### Admin panel
 
-The `admin` service publishes only to the host loopback
-(`127.0.0.1:${ADMIN_PORT}`), so there is no public port. Reach it over an SSH or
-Tailscale tunnel — e.g. from your machine:
+The `admin` service publishes on `${ADMIN_PUBLISH_HOST}:${ADMIN_PORT}`. Keep
+`ADMIN_PUBLISH_HOST=127.0.0.1` (the default in `.env.example`) to bind the host loopback
+only, so there is no public port — reach it over an SSH or Tailscale tunnel. Inside the
+container uvicorn always binds `0.0.0.0` so the published port can reach it; the two are
+separate on purpose. From your machine:
 
 ```bash
 ssh -L 8080:localhost:8080 your-server
@@ -165,6 +177,11 @@ then open `http://localhost:8080` and sign in with `ADMIN_USERNAME` / `ADMIN_PAS
 (both are required — the panel returns 401 until they match). From there
 you can upload/delete sounds, set per-sound volume, and upload/replace the
 yt-dlp/gallery-dl cookies.
+
+Sounds belong to one server: pick it in the **Server** dropdown before uploading, and the
+sound list shows only that server's sounds. The dropdown is populated from the `guilds`
+table, which the bot fills in as it connects — so start the bot at least once before
+uploading. Display names only need to be unique within a server.
 
 ### Locally
 
@@ -176,8 +193,70 @@ python main.py
 
 `ffmpeg` must be installed and on your `PATH` (used for audio playback and media conversion).
 
+## Database migrations
+
+The schema is defined by the SQLAlchemy models in
+[`src/services/db/models.py`](src/services/db/models.py) — those are the source of
+truth. [Alembic](https://alembic.sqlalchemy.org/) compares them against the live
+database and writes the SQL to reconcile the two, so a schema change goes:
+
+```bash
+# 1. edit the model in src/services/db/models.py, then:
+make revision m="add a description column to sounds"
+
+# 2. READ the generated file in alembic/versions/ before committing it.
+#    Autogenerate is a good first draft, not a finished migration — it does not
+#    detect table or column renames, and it cannot know how to backfill data.
+
+# 3. apply it
+make migrate
+```
+
+`make migrate` also runs automatically as part of `make up`, via the one-shot `migrate`
+compose service. Other targets: `make migrate-status` (current revision),
+`make migrate-down` (roll back one), and `make prod-migrate` to migrate production on
+its own before `make prod-up`.
+
+A test in [`tests/test_migrations.py`](tests/test_migrations.py) fails if the migrations
+and the models drift apart, so forgetting step 1 is caught in CI rather than in
+production.
+
+### Migrating an existing database
+
+Databases created before Alembic — that is, by the old `init.sql` — are handled
+automatically. On first run the `migrate` service notices the tables exist but the
+Alembic version table doesn't, stamps the database at the initial revision, and applies
+everything since. It is idempotent, so re-running it is safe. Take a `pg_dump` before
+the first deploy anyway.
+
+Two things Alembic will not do for you, because both need a human decision.
+
+Sounds that predate guild scoping sit in guild `0`, where they are invisible to every
+server. Point them at the right server:
+
+```sql
+UPDATE sounds SET guild_id = <your GUILD_ID> WHERE guild_id = 0;
+```
+
+And the old single-row `soundboard_panel` table is replaced by per-guild
+`soundboard_panels`, so run `/soundboard-panel` again in each server to recreate its
+panel; the messages the old panel left behind are no longer tracked and can be deleted
+by hand.
+
 ## Tests
 
 ```bash
 pytest
+```
+
+The repository and migration tests run against a real PostgreSQL database, because the
+schema uses a Postgres `BIGINT[]` and `ON CONFLICT` that SQLite cannot stand in for.
+Start one with `make test-db` (and `make test-db-stop` when you're done); without it
+those tests skip locally. CI always runs them against a service container, and fails
+rather than skipping if the database is missing.
+
+Point them somewhere else with `TEST_DATABASE_URL`:
+
+```bash
+TEST_DATABASE_URL=postgresql+psycopg2://user:pass@localhost:5432/criwin_test pytest
 ```

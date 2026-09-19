@@ -1,39 +1,34 @@
-import discord
-from discord import Interaction, app_commands
+from discord import Interaction, Permissions, Role, app_commands
 
-from src.commands.soundboard.add import handle_add
-from src.commands.soundboard.delete import handle_delete
-from src.commands.soundboard.play import handle_play
-from src.services.soundboard import autocomplete_sound_name
+from src.commands.soundboard.access import handle_access_add, handle_access_remove
+from src.commands.soundboard.panel import handle_setup_panel
 
 
 def setup_soundboard(tree: app_commands.CommandTree):
-    @tree.command(name="soundboard", description="Play a sound in your voice channel.")
+    @tree.command(
+        name="soundboard-panel",
+        description="Create the soundboard button panel in this channel.",
+    )
     @app_commands.guild_only()
-    @app_commands.describe(sound_name="Select a sound to play")
-    async def soundboard_play(interaction: Interaction, sound_name: str):
-        await handle_play(interaction, sound_name)
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def soundboard_panel(interaction: Interaction):
+        await handle_setup_panel(interaction)
 
-    @tree.command(name="soundboard-add", description="Add a sound to the soundboard.")
-    @app_commands.describe(sound_name="Sound name", sound_file="Sound file")
-    async def soundboard_add(
-        interaction: Interaction, sound_name: str, sound_file: discord.Attachment
-    ):
-        await handle_add(interaction, sound_name, sound_file)
+    access = app_commands.Group(
+        name="soundboard-access",
+        description="Manage which roles can use the soundboard.",
+        guild_only=True,
+        default_permissions=Permissions(manage_guild=True),
+    )
 
-    @tree.command(name="soundboard-delete", description="Add a sound to the soundboard.")
-    @app_commands.describe(sound_name="Sound name")
-    async def soundboard_delete(interaction: Interaction, sound_name: str):
-        await handle_delete(interaction, sound_name)
+    @access.command(name="add", description="Allow a role to use the soundboard.")
+    @app_commands.describe(role="Role to grant access")
+    async def access_add(interaction: Interaction, role: Role):
+        await handle_access_add(interaction, role)
 
-    @soundboard_play.autocomplete("sound_name")
-    async def play_sound_autocomplete(
-        _interaction: Interaction, current: str
-    ) -> list[app_commands.Choice[str]]:
-        return await autocomplete_sound_name(current)
+    @access.command(name="remove", description="Remove a role's access to the soundboard.")
+    @app_commands.describe(role="Role to revoke access from")
+    async def access_remove(interaction: Interaction, role: Role):
+        await handle_access_remove(interaction, role)
 
-    @soundboard_delete.autocomplete("sound_name")
-    async def delete_sound_autocomplete(
-        _interaction: Interaction, current: str
-    ) -> list[app_commands.Choice[str]]:
-        return await autocomplete_sound_name(current)
+    tree.add_command(access)

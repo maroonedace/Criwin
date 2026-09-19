@@ -1,3 +1,11 @@
+# Shared by every service that talks to the database.
+x-db-env: &db-env
+  DB_HOST: ${DB_HOST}
+  DB_PORT: ${DB_PORT}
+  DB_NAME: ${DB_NAME}
+  DB_USER: ${DB_USER}
+  DB_PASSWORD: ${DB_PASSWORD}
+
 services:
   db:
     image: postgres:16-alpine
@@ -8,9 +16,8 @@ services:
       POSTGRES_DB: ${DB_NAME}
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,6 +37,24 @@ services:
       timeout: 10s
       retries: 3
 
+  # One-shot: brings the schema to head, then exits. app and admin wait for it to
+  # succeed, so a failed migration stops the stack rather than letting the bot run
+  # against a schema it doesn't expect. It carries its own build block so
+  # `docker compose run --rm migrate` works on a host that has never built the image.
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: criwin
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "-m", "src.services.db.migrate"]
+    environment:
+      <<: *db-env
+      LOG_LEVEL: ${LOG_LEVEL}
+
   app:
     build:
       context: .
@@ -41,17 +66,16 @@ services:
         condition: service_healthy
       storage:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
+      ENVIRONMENT: ${ENVIRONMENT}
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       GUILD_ID: ${GUILD_ID}
       LOG_LEVEL: ${LOG_LEVEL}
 
       # Database Configuration
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
+      <<: *db-env
 
       # Storage Configuration
       STORAGE_REGION: ${STORAGE_REGION}
@@ -77,16 +101,14 @@ services:
         condition: service_healthy
       storage:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command: ["python", "-m", "src.web"]
     environment:
       LOG_LEVEL: ${LOG_LEVEL}
 
       # Database Configuration
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
+      <<: *db-env
 
       # Storage Configuration
       STORAGE_REGION: ${STORAGE_REGION}
@@ -96,10 +118,12 @@ services:
       STORAGE_BUCKET_NAME: ${STORAGE_BUCKET_NAME}
       STORAGE_SECURE: ${STORAGE_SECURE}
 
+      ADMIN_HOST: ${ADMIN_HOST}
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_PORT: ${ADMIN_PORT}
     ports:
-      - "127.0.0.1:8080:8080"
+      - "${ADMIN_PUBLISH_HOST}:${ADMIN_PORT}:${ADMIN_PORT}"
 
 volumes:
   db_data:
